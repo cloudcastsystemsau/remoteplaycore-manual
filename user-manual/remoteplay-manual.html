@@ -147,8 +147,15 @@
 <a class="toc-h3" href="#the-source-filters">The source filters</a>
 <a class="toc-h3" href="#listening">Listening</a>
 <a class="toc-h2" href="#4-source-lists">4. Source lists</a>
+<a class="toc-h3" href="#the-list-editor">The list editor</a>
+<a class="toc-h4" href="#parent-nodes">Parent nodes</a>
+<a class="toc-h4" href="#renaming-an-entry">Renaming an entry</a>
+<a class="toc-h4" href="#ordering-and-removal">Ordering and removal</a>
+<a class="toc-h4" href="#sources-that-are-not-on-air">Sources that are not on air</a>
+<a class="toc-h4" href="#who-can-see-a-list">Who can see a list</a>
 <a class="toc-h2" href="#5-monitoring-panels">5. Monitoring panels</a>
 <a class="toc-h3" href="#assigning-sources">Assigning sources</a>
+<a class="toc-h3" href="#pad-labels-and-lamp-colours">Pad labels and lamp colours</a>
 <a class="toc-h3" href="#layouts">Layouts</a>
 <a class="toc-h3" href="#panel-settings">Panel settings</a>
 <a class="toc-h3" href="#visibility-personal-private-and-public">Visibility: personal, private and public</a>
@@ -352,16 +359,55 @@ to its members.</p>
 own is marked <strong>Shared</strong> and <strong>read-only</strong>. The table shows <strong>Name</strong>,
 <strong>Entries</strong>, <strong>Visibility</strong> and <strong>Updated</strong>. Visibility is either <strong>All users</strong>
 or an explicit set (<strong>1 user</strong> / <strong>{n} users</strong>).</p>
-<p><strong>New list</strong> creates one. Within a list you can add entries from live inventory,
-group them under parent nodes, and give any entry a display name that differs
-from the source&#39;s advertised name — useful where a plant&#39;s channel labels are
-terse. Because entries are stored by their stable key, a list keeps working
-across restarts and re-advertisements; entries whose source is not currently on
-air simply do not resolve, and the filtered tree says so: <em>&quot;None of this list&#39;s
-entries match a live source right now.&quot;</em></p>
-<p>A source that does not advertise at all can still be listed: <strong>add by SDP or
-multicast address</strong> parses a pasted SDP blob, or takes a multicast address and
-port directly, and stores the result as a <code>manual</code> source.</p>
+<p><strong>New list</strong> creates one, and <strong>View</strong> opens the editor.</p>
+<h3 id="the-list-editor">The list editor</h3>
+<p><img src="img/20-listeditor.png" alt="The list editor"></p>
+<p>The editor is two panes. <strong>Available sources</strong> on the left is the live
+inventory, grouped by device with a <strong>Search sources…</strong> box; <strong>List contents</strong>
+on the right is the list being built. A source row&#39;s <strong>+</strong> adds it (<em>&quot;Add to
+list&quot;</em>); one already used shows a tick instead (<em>&quot;Already in the list&quot;</em>). Rows
+can also be dragged across — <em>&quot;Drag sources here, or use a row&#39;s + button.&quot;</em></p>
+<p>The list name and its entry count sit above both panes, and edits are staged
+until <strong>Save changes</strong> — an <strong>Unsaved changes</strong> marker appears meanwhile, and
+leaving asks <em>&quot;Discard unsaved changes?&quot;</em>. <strong>Go back</strong> returns to the list
+index.</p>
+<h4 id="parent-nodes">Parent nodes</h4>
+<p><strong>Add parent node</strong> creates a named group inside the list — <em>Morning Show</em> and
+<em>Utility</em> in the capture above. Entries that belong to no group collect under
+<strong>Ungrouped</strong>, and each node shows how many entries it holds. A node can be
+renamed, and removing one is not destructive: <em>&quot;Remove parent node (entries
+stay, ungrouped)&quot;</em>. An empty node prompts <em>&quot;Drag sources onto this node.&quot;</em></p>
+<p>Parent nodes are how a long list stays readable — a studio&#39;s list can separate
+the show feeds from the utility ones without needing two lists.</p>
+<h4 id="renaming-an-entry">Renaming an entry</h4>
+<p>The pencil on any entry sets a <strong>display name</strong> for that entry only; the
+underlying source is untouched, and the same source in another list keeps its
+own name. A renamed entry carries a <strong>renamed → {original}</strong> badge, so nobody
+has to guess what <em>Brekky Host</em> or <em>Spare Feed</em> actually points at. The device
+each entry came from is shown on the right of its row.</p>
+<p>This is the answer to terse plant labels: the console can say <em>Brekky Host</em>
+where the device advertises <em>GUEST MIC 1</em>.</p>
+<h4 id="ordering-and-removal">Ordering and removal</h4>
+<p>Each entry has a drag handle plus <strong>Move up</strong> / <strong>Move down</strong> arrows, and the
+red <strong>×</strong> is <strong>Remove from list</strong>. Order is the list&#39;s own — it is what the
+Sources tree and the panel drawer show when filtered to that list.</p>
+<h4 id="sources-that-are-not-on-air">Sources that are not on air</h4>
+<p>Because entries are stored by their stable <code>origin:type:channel</code> key, a list
+keeps working across restarts and re-advertisements. An entry with no live
+match is marked <strong>missing</strong> rather than dropped: <em>&quot;No live source matches this
+entry — it is kept but unplayable.&quot;</em> Filtering the Sources tree to a list whose
+entries are all off air says so plainly: <em>&quot;None of this list&#39;s entries match a
+live source right now.&quot;</em></p>
+<p>A source that never advertises at all can still be listed. <strong>Add manual
+source</strong> takes it directly — by Livewire channel, AES67 multicast address or
+soundcard — and the <strong>add by SDP or multicast address</strong> flow parses a pasted
+SDP blob or an address and port, storing the result as a <code>manual</code> source.</p>
+<h4 id="who-can-see-a-list">Who can see a list</h4>
+<p>A list is visible to every signed-in user (<em>&quot;Every signed-in user sees this
+list.&quot;</em>) or restricted to named accounts and groups: <strong>Allowed users</strong> and
+<strong>Allowed groups</strong>, where <em>&quot;Only the ticked users and groups (plus admins) see
+this list.&quot;</em> With no groups defined the picker says <em>&quot;No groups defined —
+create them under Admin › Groups.&quot;</em> See <a href="#groups">Groups</a>.</p>
 <h2 id="5-monitoring-panels">5. Monitoring panels</h2>
 <p>A panel is a rack-unit-styled grid of pads. Each pad is bound to a source;
 pressing it monitors that source, and — on an admin-configured room panel —
@@ -379,11 +425,24 @@ stereo <strong>METER</strong>, a <strong>BITRATE</strong> selector and <strong>S
 <p><strong>SOURCES</strong> opens the drawer: <em>&quot;Drag a source onto a panel slot to assign it.
 Locked sources can&#39;t be assigned.&quot;</em> The drawer has its own <strong>Filter</strong> (any
 source list) and <strong>Search sources…</strong> box, and marks sources already on the
-panel as <em>&quot;Already on the panel&quot;</em>. Clicking an empty pad opens the same picker
-for that slot directly.</p>
-<p>Each pad can carry a <strong>Button label</strong> — <em>&quot;Custom label (blank = source name)&quot;</em> —
-and a <strong>Lamp colour</strong>, so a wall panel can be read at a glance from across a
-studio.</p>
+panel as <em>&quot;Already on the panel&quot;</em>.</p>
+<p>Clicking an empty <strong>ASSIGN</strong> pad is the quicker route — it opens a picker for
+that slot alone, titled <strong>Assign source to slot {n}</strong>:</p>
+<p><img src="img/24-buttonsourceassignment.png" alt="Assigning a source to a pad"></p>
+<p>The picker is the same inventory, grouped by device with protocol badges and a
+<strong>Search sources…</strong> box, scoped to the one slot you clicked. Choosing a source
+fills the pad and closes the picker.</p>
+<h3 id="pad-labels-and-lamp-colours">Pad labels and lamp colours</h3>
+<p>Clicking a pad that already has a source opens its editor.</p>
+<p><img src="img/23-buttoneditor.png" alt="The pad editor"></p>
+<p><strong>BUTTON LABEL</strong> overrides what the pad shows — <em>&quot;Custom label (blank = source
+name)&quot;</em> — and takes effect on <strong>Apply</strong>. <strong>LAMP COLOUR</strong> picks the pad&#39;s lamp
+from <strong>Amber</strong>, <strong>Red</strong>, <strong>Green</strong>, <strong>Blue</strong>, <strong>Violet</strong> or <strong>Pink</strong>, which is
+what makes a wall panel readable from across a studio: mics on one colour,
+returns on another. <strong>Clear slot</strong> empties the pad without touching the layout
+around it.</p>
+<p>A pad whose source has left the inventory keeps its label and shows <strong>MISSING</strong>
+beneath it, so the layout never reshuffles when a device drops off air.</p>
 <h3 id="layouts">Layouts</h3>
 <p>Panels are saved as named layouts. <strong>Layouts</strong> lists them, <strong>Save as…</strong> stores
 the current arrangement under a new name, and <strong>Manage layouts…</strong> renames and
@@ -687,7 +746,7 @@ RemotePlay servers and from legacy RemotePlay installations.</li>
 <p><strong>API Keys</strong> and <strong>Settings › Backups</strong> are placeholders in this build and say
 so in the UI; there is nothing to document yet.</p>
 <hr>
-<p><em>Generated against main @ <code>931f6b8</code>, RPC-1…RPC-115. Screenshots captured with
+<p><em>Generated against main @ <code>5294269</code>, RPC-1…RPC-115. Screenshots captured with
 <code>build/manual-screenshots.mjs</code> against a live instance fed by
 <code>RemotePlayCore.LivewireSim</code> and <code>RemotePlayCore.Aes67Sim</code>; see
 <a href="../manual-maintenance.md">manual-maintenance.md</a>.</em></p>

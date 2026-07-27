@@ -22,8 +22,9 @@ UI.
 2. [Getting started](#2-getting-started)
 3. [Sources](#3-sources)
 4. [Source lists](#4-source-lists)
+   — [the list editor](#the-list-editor), [parent nodes](#parent-nodes), [renaming an entry](#renaming-an-entry)
 5. [Monitoring panels](#5-monitoring-panels)
-   — [panel settings](#panel-settings), [visibility](#visibility-personal-private-and-public), [the kiosk view](#the-kiosk-view)
+   — [assigning sources](#assigning-sources), [pad labels and lamp colours](#pad-labels-and-lamp-colours), [panel settings](#panel-settings), [visibility](#visibility-personal-private-and-public), [the kiosk view](#the-kiosk-view)
 6. [Audio outputs](#6-audio-outputs)
    — [configuring an AES67 output](#configuring-an-aes67-output), [routing sources](#routing-sources-to-outputs)
 7. [Server administration](#7-server-administration)
@@ -167,17 +168,72 @@ own is marked **Shared** and **read-only**. The table shows **Name**,
 **Entries**, **Visibility** and **Updated**. Visibility is either **All users**
 or an explicit set (**1 user** / **{n} users**).
 
-**New list** creates one. Within a list you can add entries from live inventory,
-group them under parent nodes, and give any entry a display name that differs
-from the source's advertised name — useful where a plant's channel labels are
-terse. Because entries are stored by their stable key, a list keeps working
-across restarts and re-advertisements; entries whose source is not currently on
-air simply do not resolve, and the filtered tree says so: *"None of this list's
-entries match a live source right now."*
+**New list** creates one, and **View** opens the editor.
 
-A source that does not advertise at all can still be listed: **add by SDP or
-multicast address** parses a pasted SDP blob, or takes a multicast address and
-port directly, and stores the result as a `manual` source.
+### The list editor
+
+![The list editor](img/20-listeditor.png)
+
+The editor is two panes. **Available sources** on the left is the live
+inventory, grouped by device with a **Search sources…** box; **List contents**
+on the right is the list being built. A source row's **+** adds it (*"Add to
+list"*); one already used shows a tick instead (*"Already in the list"*). Rows
+can also be dragged across — *"Drag sources here, or use a row's + button."*
+
+The list name and its entry count sit above both panes, and edits are staged
+until **Save changes** — an **Unsaved changes** marker appears meanwhile, and
+leaving asks *"Discard unsaved changes?"*. **Go back** returns to the list
+index.
+
+#### Parent nodes
+
+**Add parent node** creates a named group inside the list — *Morning Show* and
+*Utility* in the capture above. Entries that belong to no group collect under
+**Ungrouped**, and each node shows how many entries it holds. A node can be
+renamed, and removing one is not destructive: *"Remove parent node (entries
+stay, ungrouped)"*. An empty node prompts *"Drag sources onto this node."*
+
+Parent nodes are how a long list stays readable — a studio's list can separate
+the show feeds from the utility ones without needing two lists.
+
+#### Renaming an entry
+
+The pencil on any entry sets a **display name** for that entry only; the
+underlying source is untouched, and the same source in another list keeps its
+own name. A renamed entry carries a **renamed → {original}** badge, so nobody
+has to guess what *Brekky Host* or *Spare Feed* actually points at. The device
+each entry came from is shown on the right of its row.
+
+This is the answer to terse plant labels: the console can say *Brekky Host*
+where the device advertises *GUEST MIC 1*.
+
+#### Ordering and removal
+
+Each entry has a drag handle plus **Move up** / **Move down** arrows, and the
+red **×** is **Remove from list**. Order is the list's own — it is what the
+Sources tree and the panel drawer show when filtered to that list.
+
+#### Sources that are not on air
+
+Because entries are stored by their stable `origin:type:channel` key, a list
+keeps working across restarts and re-advertisements. An entry with no live
+match is marked **missing** rather than dropped: *"No live source matches this
+entry — it is kept but unplayable."* Filtering the Sources tree to a list whose
+entries are all off air says so plainly: *"None of this list's entries match a
+live source right now."*
+
+A source that never advertises at all can still be listed. **Add manual
+source** takes it directly — by Livewire channel, AES67 multicast address or
+soundcard — and the **add by SDP or multicast address** flow parses a pasted
+SDP blob or an address and port, storing the result as a `manual` source.
+
+#### Who can see a list
+
+A list is visible to every signed-in user (*"Every signed-in user sees this
+list."*) or restricted to named accounts and groups: **Allowed users** and
+**Allowed groups**, where *"Only the ticked users and groups (plus admins) see
+this list."* With no groups defined the picker says *"No groups defined —
+create them under Admin › Groups."* See [Groups](#groups).
 
 ## 5. Monitoring panels
 
@@ -203,12 +259,32 @@ stereo **METER**, a **BITRATE** selector and **Stop**. An unassigned pad reads
 **SOURCES** opens the drawer: *"Drag a source onto a panel slot to assign it.
 Locked sources can't be assigned."* The drawer has its own **Filter** (any
 source list) and **Search sources…** box, and marks sources already on the
-panel as *"Already on the panel"*. Clicking an empty pad opens the same picker
-for that slot directly.
+panel as *"Already on the panel"*.
 
-Each pad can carry a **Button label** — *"Custom label (blank = source name)"* —
-and a **Lamp colour**, so a wall panel can be read at a glance from across a
-studio.
+Clicking an empty **ASSIGN** pad is the quicker route — it opens a picker for
+that slot alone, titled **Assign source to slot {n}**:
+
+![Assigning a source to a pad](img/24-buttonsourceassignment.png)
+
+The picker is the same inventory, grouped by device with protocol badges and a
+**Search sources…** box, scoped to the one slot you clicked. Choosing a source
+fills the pad and closes the picker.
+
+### Pad labels and lamp colours
+
+Clicking a pad that already has a source opens its editor.
+
+![The pad editor](img/23-buttoneditor.png)
+
+**BUTTON LABEL** overrides what the pad shows — *"Custom label (blank = source
+name)"* — and takes effect on **Apply**. **LAMP COLOUR** picks the pad's lamp
+from **Amber**, **Red**, **Green**, **Blue**, **Violet** or **Pink**, which is
+what makes a wall panel readable from across a studio: mics on one colour,
+returns on another. **Clear slot** empties the pad without touching the layout
+around it.
+
+A pad whose source has left the inventory keeps its label and shows **MISSING**
+beneath it, so the layout never reshuffles when a device drops off air.
 
 ### Layouts
 
@@ -462,7 +538,7 @@ so in the UI; there is nothing to document yet.
 
 ---
 
-*Generated against main @ `931f6b8`, RPC-1…RPC-115. Screenshots captured with
+*Generated against main @ `5294269`, RPC-1…RPC-115. Screenshots captured with
 `build/manual-screenshots.mjs` against a live instance fed by
 `RemotePlayCore.LivewireSim` and `RemotePlayCore.Aes67Sim`; see
 [manual-maintenance.md](../manual-maintenance.md).*
