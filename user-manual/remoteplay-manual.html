@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#22c55e">
+<title>Remote Play User Manual</title>
+<style>
+  :root {
+    /* remote-play-brand/README.md — dark surface ramp */
+    --facet-upper:#86efac; --facet-lower:#22c55e; --chevron:#15803d; --node:#0d1117;
+    --color-bg:#0d1117;
+    --color-surface:#151d27;
+    --color-raised:#1c2531;
+    --color-border:rgba(134,239,172,.16);
+    --color-text:#e6edf6;
+    --color-text-muted:#8b9bb0;
+    --color-accent:#22c55e;
+    --color-strong:#ffffff;
+    --display:'Space Grotesk',system-ui,sans-serif;
+    --body:'IBM Plex Sans',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,"Cascadia Code",Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      /* the whole ramp shifts by surface; #22c55e is 2.3:1 on white and never
+         acceptable as text, so links and headings use #15803d at 5.0:1 */
+      --facet-upper:#4ade80; --facet-lower:#16a34a; --chevron:#14532d; --node:#0d1117;
+      --color-bg:#ffffff;
+      --color-surface:#f0fdf4;
+      --color-raised:#dcfce7;
+      --color-border:rgba(13,17,23,.10);
+      --color-text:#0d1117;
+      --color-text-muted:#5b6b80;
+      --color-accent:#15803d;
+      --color-strong:#0d1117;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--color-bg); color: var(--color-text);
+    font: 15px/1.65 var(--body);
+  }
+  .layout { display: flex; max-width: 1400px; margin: 0 auto; }
+  nav {
+    position: sticky; top: 0; align-self: flex-start;
+    width: 280px; flex: 0 0 280px; height: 100vh; overflow-y: auto;
+    padding: 28px 20px; border-right: 1px solid var(--color-border);
+  }
+  nav .brand { display: flex; align-items: center; gap: 11px; margin-bottom: 24px; }
+  /* two-tone wordmark, the datamorph pattern: light weight + bold second word */
+  nav .brand .name {
+    font-family: var(--display); font-size: 20px; letter-spacing: -.03em;
+    font-weight: 400; color: var(--color-text-muted);
+  }
+  nav .brand .name b { font-weight: 600; color: var(--color-text); }
+  nav .brand .sub {
+    color: var(--color-text-muted); font-size: 10.5px;
+    letter-spacing: 3px; text-transform: uppercase; margin-top: 2px;
+  }
+  nav a {
+    display: block; color: var(--color-text-muted); text-decoration: none;
+    padding: 5px 10px; border-radius: 6px; font-size: 13px; margin-bottom: 1px;
+  }
+  nav a:hover { color: var(--color-text); background: var(--color-surface); }
+  nav a.toc-h2 { margin-top: 6px; font-weight: 600; color: var(--color-text); font-family: var(--display); }
+  nav a.toc-h3 { padding-left: 22px; font-size: 12px; }
+  nav a.toc-h4 { padding-left: 34px; font-size: 11.5px; }
+  main { flex: 1; min-width: 0; padding: 36px 48px 80px; }
+  h1, h2, h3 { font-family: var(--display); letter-spacing: -.02em; font-weight: 500; }
+  h1 {
+    font-size: 28px; border-bottom: 1px solid var(--color-border);
+    padding-bottom: 16px;
+  }
+  h2 {
+    font-size: 22px; margin-top: 56px; padding-top: 18px;
+    border-top: 1px solid var(--color-border); color: var(--color-accent);
+  }
+  h3 { font-size: 16px; margin-top: 32px; font-weight: 600; color: var(--color-text); }
+  a { color: var(--color-accent); }
+  strong { color: var(--color-strong); }
+  img {
+    max-width: 100%; border: 1px solid var(--color-border); border-radius: 10px;
+    margin: 14px 0; display: block; box-shadow: 0 6px 24px rgba(0,0,0,.35);
+  }
+  code {
+    background: var(--color-raised); border: 1px solid var(--color-border);
+    padding: 1.5px 6px; border-radius: 5px; font-size: 13px; font-family: var(--mono);
+  }
+  pre {
+    background: var(--color-raised); border: 1px solid var(--color-border);
+    padding: 14px 18px; border-radius: 10px; overflow-x: auto;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--color-border); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th {
+    background: var(--color-surface); font-family: var(--display); font-size: 12px;
+    text-transform: uppercase; letter-spacing: 1.5px;
+  }
+  tr:nth-child(even) td { background: var(--color-surface); }
+  blockquote {
+    margin: 16px 0; padding: 10px 18px; border-left: 3px solid var(--color-accent);
+    background: var(--color-surface); border-radius: 0 8px 8px 0;
+    color: var(--color-text-muted);
+  }
+  hr { border: none; border-top: 1px solid var(--color-border); margin: 40px 0; }
+  li { margin: 4px 0; }
+  em { color: var(--color-text-muted); }
+  @media (max-width: 900px) {
+    .layout { display: block; }
+    nav { position: static; width: auto; height: auto; border-right: none; border-bottom: 1px solid var(--color-border); }
+    main { padding: 24px 20px 60px; }
+  }
+  @media print {
+    :root {
+      --facet-upper:#4ade80; --facet-lower:#16a34a; --chevron:#14532d;
+      --color-bg:#ffffff; --color-surface:#f0fdf4; --color-raised:#f0fdf4;
+      --color-border:rgba(13,17,23,.10); --color-text:#0d1117;
+      --color-text-muted:#5b6b80; --color-accent:#15803d; --color-strong:#0d1117;
+    }
+    nav { display: none; }
+    img { box-shadow: none; }
+    tr:nth-child(even) td { background: none; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <div class="brand">
+    <svg viewBox="0 0 100 100" width="34" height="34" aria-hidden="true">
+<polygon points="14,18 56,50 14,50" fill="var(--facet-upper)"/>
+<polygon points="14,50 56,50 14,82" fill="var(--facet-lower)"/>
+<polygon points="64,22 88,50 64,78 54,78 78,50 54,22" fill="var(--chevron)"/>
+<polygon points="26,44 32,50 26,56 20,50" fill="var(--node)"/>
+</svg>
+    <div><div class="name">remote <b>play</b></div><div class="sub">User manual</div></div>
+  </div>
+  <a class="toc-h2" href="#1-core-concepts">1. Core concepts</a>
+<a class="toc-h2" href="#2-getting-started">2. Getting started</a>
+<a class="toc-h3" href="#requirements">Requirements</a>
+<a class="toc-h3" href="#first-sign-in">First sign-in</a>
+<a class="toc-h3" href="#the-console-at-a-glance">The console at a glance</a>
+<a class="toc-h2" href="#3-sources">3. Sources</a>
+<a class="toc-h3" href="#finding-a-source">Finding a source</a>
+<a class="toc-h3" href="#the-source-filters">The source filters</a>
+<a class="toc-h3" href="#listening">Listening</a>
+<a class="toc-h2" href="#4-source-lists">4. Source lists</a>
+<a class="toc-h2" href="#5-monitoring-panels">5. Monitoring panels</a>
+<a class="toc-h3" href="#assigning-sources">Assigning sources</a>
+<a class="toc-h3" href="#layouts">Layouts</a>
+<a class="toc-h3" href="#room-panels">Room panels</a>
+<a class="toc-h2" href="#what-this-revision-does-not-cover">What this revision does not cover</a>
+</nav>
+<main>
+<h1>Remote Play user manual</h1>
+<p>Remote Play is a web gateway for <strong>Axia Livewire</strong> and <strong>AES67</strong> audio-over-IP.
+It listens to what is advertising on the broadcast LAN, presents every source
+in one browser console, and transcodes any of them to Opus so an operator can
+monitor them from a laptop, a phone, or a wall-mounted panel — without a
+hardware receiver and without joining the multicast groups themselves.</p>
+<p>This manual covers the operator and administrator console. It is written
+against the shipping build; every label in <strong>bold</strong> is quoted verbatim from the
+UI.</p>
+<blockquote>
+<p><strong>This revision is a first pass.</strong> It covers signing in, the Sources console,
+source lists and monitoring panels. Devices, audio outputs, federation,
+licensing and the REST surface are named where they appear but not yet
+documented in full — see <a href="#what-this-revision-does-not-cover">What this revision does not cover</a>.</p>
+</blockquote>
+
+<hr>
+<h2 id="1-core-concepts">1. Core concepts</h2>
+<p><strong>Sources are discovered, not configured.</strong> Remote Play joins the Livewire
+advertisement group (239.192.255.3:4001) and the SAP groups AES67 senders
+announce on (224.2.127.254 and 239.255.255.255, both port 9875). Everything
+advertising on the network it can see appears in the console within a few
+seconds. Nothing is typed in by hand unless a source does not advertise at all,
+in which case it can be added manually from an SDP or a multicast address.</p>
+<p><strong>A source keeps its identity across restarts.</strong> Every source has a stable key
+of the form <code>origin:type:channel</code> — origin is <code>local</code> for something this server
+discovered itself, <code>manual</code> for a hand-added source, or the id of a legacy
+RemotePlay server it was aggregated from; type is <code>lwto</code>, <code>lwfrom</code>, <code>aes67</code> or
+<code>soundcard</code>. Lists and panels store that key and re-resolve it against live
+inventory, so a source that goes off air and comes back returns to the same
+list entry and the same panel pad rather than becoming a new one.</p>
+<p><strong>Two roles, not four.</strong> Every account is either <strong>admin</strong> or <strong>user</strong>. Admins
+see the whole console, including the <strong>Admin</strong> and <strong>Settings</strong> groups in the
+sidebar. Users see <strong>Sources</strong>, <strong>Panel</strong> and <strong>Source Lists</strong>, and their own
+saved panel layouts. Older installations that carried operator or viewer roles
+coerce them to user on upgrade.</p>
+<p><strong>Monitoring is Opus over WebSocket.</strong> Pressing <strong>Play</strong> on a source opens a
+WebSocket to the server, which joins the multicast group on the operator&#39;s
+behalf, buffers the RTP, and encodes to Opus at the bitrate chosen in the
+player. The operator&#39;s browser never touches the AoIP network.</p>
+<h2 id="2-getting-started">2. Getting started</h2>
+<h3 id="requirements">Requirements</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Server OS</td>
+<td>Linux or Windows, .NET 8 runtime</td>
+</tr>
+<tr>
+<td>Network</td>
+<td>An interface on the broadcast LAN, able to join multicast groups. On a multi-homed host, name it with <code>--Livewire:BindAddress=&lt;ip&gt;</code>.</td>
+</tr>
+<tr>
+<td>Browser</td>
+<td>Any current Chromium, Firefox or Safari. Opus playback needs no plugin.</td>
+</tr>
+<tr>
+<td>Audio outputs (optional)</td>
+<td>GStreamer 1.20 or later on the server, for passing audio through to a physical or network output.</td>
+</tr>
+</tbody></table>
+<h3 id="first-sign-in">First sign-in</h3>
+<p>A fresh installation with no user accounts creates a bootstrap administrator
+and logs a warning saying so. Sign in with <strong>admin</strong> / <strong>admin</strong>.</p>
+<p><img src="img/01-sign-in.png" alt="Sign-in page"></p>
+<p>The sign-in page states this directly: <em>&quot;First boot creates a default admin
+account when no users exist — change its password after signing in.&quot;</em> Do that
+immediately — <strong>Password</strong> at the bottom of the sidebar. If the server is
+configured for LDAP or an OIDC provider, directory accounts sign in through the
+same two fields, and any configured SSO provider appears as its own
+<strong>Sign in with …</strong> button.</p>
+<h3 id="the-console-at-a-glance">The console at a glance</h3>
+<p><img src="img/02-console-at-a-glance.png" alt="The console after signing in"></p>
+<p>The sidebar is the whole navigation model. The Remote Play mark at the top is
+the home affordance — clicking it returns to <strong>Sources</strong>. Below it:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Entries</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><em>(top level)</em></td>
+<td><strong>Sources</strong> (with <strong>All Sources</strong>, <strong>Local Sources</strong> and one entry per source list), <strong>Panel</strong>, <strong>Source Lists</strong>, <strong>Devices</strong></td>
+</tr>
+<tr>
+<td><strong>Admin</strong></td>
+<td><strong>Summary</strong>, <strong>Users</strong>, <strong>API Keys</strong>, <strong>Legacy Servers</strong>, <strong>Audio Outputs</strong>, <strong>Federation</strong></td>
+</tr>
+<tr>
+<td><strong>Settings</strong></td>
+<td><strong>General</strong>, <strong>TLS</strong>, <strong>Email</strong>, <strong>Backups</strong>, <strong>Licence</strong></td>
+</tr>
+</tbody></table>
+<p>The <strong>Admin</strong> and <strong>Settings</strong> groups are admin-only. At the bottom sit the
+signed-in account, a light/dark toggle, and <strong>Password</strong> / <strong>Sign out</strong>.</p>
+<h2 id="3-sources">3. Sources</h2>
+<p><strong>Sources</strong> is the console&#39;s home page: every device the server can see,
+grouped by device, with each device&#39;s source count on the right. The header
+counts what has been found, and a device row expands to its sources.</p>
+<p>Each source row carries its channel number, name and multicast address, a
+protocol badge — <strong>LW</strong> for Livewire, <strong>AES67</strong> for an AES67 stream — and a
+<strong>Play</strong> button. Device rows carry the badge too, so a plant running both
+protocols can be read at a glance.</p>
+<h3 id="finding-a-source">Finding a source</h3>
+<p><img src="img/03-sources-tree.png" alt="Searching the Sources tree"></p>
+<p><strong>Search devices and sources…</strong> filters the tree as you type, matching both
+device and source names — above, <code>Studio 1</code> has narrowed a plant of a hundred
+sources to two devices. Three toggles control how the tree is laid out:</p>
+<table>
+<thead>
+<tr>
+<th>Toggle</th>
+<th>Options</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>DEVICES</strong></td>
+<td><strong>Name</strong> / <strong>IP</strong></td>
+<td>Label device rows by name or by IP address</td>
+</tr>
+<tr>
+<td><strong>SOURCES</strong></td>
+<td><strong>Name</strong> / <strong>Mcast</strong></td>
+<td>Label source rows by name or by multicast group</td>
+</tr>
+<tr>
+<td><strong>SORT</strong></td>
+<td><strong>Name</strong> / <strong>IP</strong></td>
+<td>Order the tree alphabetically or by address</td>
+</tr>
+</tbody></table>
+<p><strong>Expand all</strong> and <strong>Collapse all</strong> act on the whole tree. On a plant with
+thousands of sources, collapse first and search — the tree is built for that
+scale.</p>
+<h3 id="the-source-filters">The source filters</h3>
+<p>Under <strong>Sources</strong> in the sidebar:</p>
+<ul>
+<li><strong>All Sources</strong> — everything, including sources aggregated from federated
+peers and legacy RemotePlay servers.</li>
+<li><strong>Local Sources</strong> — only what this server discovered itself.</li>
+<li><strong>One entry per source list</strong> — see <a href="#4-source-lists">§4</a>. Lists you can see
+but not edit carry a padlock.</li>
+</ul>
+<h3 id="listening">Listening</h3>
+<p><strong>Play</strong> on a source row starts monitoring it; <strong>Stop</strong> ends it. The player
+carries a level meter and a bitrate selector. Some rows cannot be played and
+say why:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>locked</strong></td>
+<td><em>&quot;Source is locked on the device&quot;</em> — the device itself will not release it.</td>
+</tr>
+<tr>
+<td><strong>remote</strong></td>
+<td>The source belongs to a federated peer; <em>&quot;streams via origin server&quot;</em>.</td>
+</tr>
+<tr>
+<td><em>manual</em></td>
+<td><em>&quot;Manual sources can&#39;t be monitored from this page yet.&quot;</em></td>
+</tr>
+</tbody></table>
+<h2 id="4-source-lists">4. Source lists</h2>
+<p>A source list is a curated set of sources — a studio&#39;s regular feeds, an
+engineer&#39;s fault-finding set, the sources a particular panel draws from. Lists
+appear as their own entries under <strong>Sources</strong>, so choosing one filters the tree
+to its members.</p>
+<p><img src="img/04-source-lists.png" alt="Source Lists"></p>
+<p>The page separates <strong>My lists</strong> from <strong>Shared lists</strong>; a shared list you do not
+own is marked <strong>Shared</strong> and <strong>read-only</strong>. The table shows <strong>Name</strong>,
+<strong>Entries</strong>, <strong>Visibility</strong> and <strong>Updated</strong>. Visibility is either <strong>All users</strong>
+or an explicit set (<strong>1 user</strong> / <strong>{n} users</strong>).</p>
+<p><strong>New list</strong> creates one. Within a list you can add entries from live inventory,
+group them under parent nodes, and give any entry a display name that differs
+from the source&#39;s advertised name — useful where a plant&#39;s channel labels are
+terse. Because entries are stored by their stable key, a list keeps working
+across restarts and re-advertisements; entries whose source is not currently on
+air simply do not resolve, and the filtered tree says so: <em>&quot;None of this list&#39;s
+entries match a live source right now.&quot;</em></p>
+<p>A source that does not advertise at all can still be listed: <strong>add by SDP or
+multicast address</strong> parses a pasted SDP blob, or takes a multicast address and
+port directly, and stores the result as a <code>manual</code> source.</p>
+<h2 id="5-monitoring-panels">5. Monitoring panels</h2>
+<p>A panel is a rack-unit-styled grid of pads. Each pad is bound to a source;
+pressing it monitors that source, and — on an admin-configured room panel —
+routes it to the panel&#39;s audio output.</p>
+<p><img src="img/05-panel.png" alt="The monitoring panel"></p>
+<p>The panel toolbar carries, left to right: the panel name and <strong>PRESET</strong>
+selector, <strong>COLS</strong> with − / + to set the pad columns, a <strong>RACK</strong> toggle between
+<strong>1RU</strong> and <strong>2RU</strong>, the visibility chip (<strong>PERSONAL</strong>), <strong>SETTINGS</strong>, and
+<strong>SOURCES</strong> — which opens the source drawer on the right.</p>
+<p>Underneath sits the player strip: state (<strong>IDLE</strong> until a pad is pressed), a
+stereo <strong>METER</strong>, a <strong>BITRATE</strong> selector and <strong>Stop</strong>. An unassigned pad reads
+<strong>ASSIGN</strong>.</p>
+<h3 id="assigning-sources">Assigning sources</h3>
+<p><img src="img/06-panel-source-drawer.png" alt="The source drawer"></p>
+<p><strong>SOURCES</strong> opens the drawer: <em>&quot;Drag a source onto a panel slot to assign it.
+Locked sources can&#39;t be assigned.&quot;</em> The drawer has its own <strong>Filter</strong> (any
+source list) and <strong>Search sources…</strong> box, and marks sources already on the
+panel as <em>&quot;Already on the panel&quot;</em>. Clicking an empty pad opens the same picker
+for that slot directly.</p>
+<p>Each pad can carry a <strong>Button label</strong> — <em>&quot;Custom label (blank = source name)&quot;</em> —
+and a <strong>Lamp colour</strong>, so a wall panel can be read at a glance from across a
+studio.</p>
+<h3 id="layouts">Layouts</h3>
+<p>Panels are saved as named layouts. <strong>Layouts</strong> lists them, <strong>Save as…</strong> stores
+the current arrangement under a new name, and <strong>Manage layouts…</strong> renames and
+deletes. The active layout is marked <strong>active</strong>, and unsaved changes show an
+<strong>unsaved</strong> chip beside the panel name. Layouts are per-user: yours are yours
+unless an admin publishes a panel as a room panel.</p>
+<h3 id="room-panels">Room panels</h3>
+<p>An administrator can promote a panel from <strong>personal</strong> to a private or public
+room panel, bind it to an audio output, and give it a slug. A public panel then
+opens at <code>/p/{slug}</code> as a kiosk view with no sign-in, scoped to exactly that
+panel&#39;s sources and output — the wall-panel case. Selecting a pad on a room
+panel drives the bound output; deselecting stops it.</p>
+<hr>
+<h2 id="what-this-revision-does-not-cover">What this revision does not cover</h2>
+<p>These areas exist in the product and are reachable from the sidebar, but are
+not yet documented here. They are the subject of the next revisions:</p>
+<ul>
+<li><strong>Devices</strong> — Axia device management: LWRP terminal, configuration backup and
+restore, scheduled backup tasks, firmware banks.</li>
+<li><strong>Audio Outputs</strong> — server-side passthrough to ALSA/ASIO devices and AES67
+streams via GStreamer, and the IO editor.</li>
+<li><strong>Federation</strong> and <strong>Legacy Servers</strong> — aggregating sources from peer
+RemotePlay servers and from legacy RemotePlay installations.</li>
+<li><strong>Summary</strong>, <strong>Users</strong>, <strong>API Keys</strong> — administration.</li>
+<li><strong>Settings</strong> — <strong>General</strong>, <strong>TLS</strong>, <strong>Email</strong>, <strong>Backups</strong>.</li>
+<li><strong>Licence</strong> — activation, feature gates and the unlicensed preview state.</li>
+<li>The REST API and WebSocket streaming contract.</li>
+</ul>
+<hr>
+<p><em>Generated against main @ <code>HEAD</code>, RPC-1…RPC-102. Screenshots captured with
+<code>build/manual-screenshots.mjs</code> against a live instance fed by
+<code>RemotePlayCore.LivewireSim</code> and <code>RemotePlayCore.Aes67Sim</code>; see
+<a href="../manual-maintenance.md">manual-maintenance.md</a>.</em></p>
+
+</main>
+</div>
+</body>
+</html>
