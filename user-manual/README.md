@@ -10,10 +10,11 @@ This manual covers the operator and administrator console. It is written
 against the shipping build; every label in **bold** is quoted verbatim from the
 UI.
 
-> **This revision is a first pass.** It covers signing in, the Sources console,
-> source lists and monitoring panels. Devices, audio outputs, federation,
-> licensing and the REST surface are named where they appear but not yet
-> documented in full — see [What this revision does not cover](#what-this-revision-does-not-cover).
+> **This revision is not yet complete.** It covers signing in, the Sources
+> console, source lists, monitoring panels, audio outputs, server settings and
+> licensing. Device management, federation and the REST surface are named where
+> they appear but not yet documented in full — see
+> [What this revision does not cover](#what-this-revision-does-not-cover).
 
 ## Contents
 
@@ -22,7 +23,13 @@ UI.
 3. [Sources](#3-sources)
 4. [Source lists](#4-source-lists)
 5. [Monitoring panels](#5-monitoring-panels)
-6. [What this revision does not cover](#what-this-revision-does-not-cover)
+   — [panel settings](#panel-settings), [visibility](#visibility-personal-private-and-public), [the kiosk view](#the-kiosk-view)
+6. [Audio outputs](#6-audio-outputs)
+   — [configuring an AES67 output](#configuring-an-aes67-output), [routing sources](#routing-sources-to-outputs)
+7. [Server administration](#7-server-administration)
+   — [Groups](#groups), [General](#general), [TLS](#tls), [Email](#email), [Backups](#backups)
+8. [Licence](#8-licence)
+9. [What this revision does not cover](#what-this-revision-does-not-cover)
 
 ---
 
@@ -89,7 +96,7 @@ the home affordance — clicking it returns to **Sources**. Below it:
 | Group | Entries |
 |---|---|
 | *(top level)* | **Sources** (with **All Sources**, **Local Sources** and one entry per source list), **Panel**, **Source Lists**, **Devices** |
-| **Admin** | **Summary**, **Users**, **API Keys**, **Legacy Servers**, **Audio Outputs**, **Federation** |
+| **Admin** | **Summary**, **Users**, **Groups**, **API Keys**, **Legacy Servers**, **Audio Outputs**, **Federation** |
 | **Settings** | **General**, **TLS**, **Email**, **Backups**, **Licence** |
 
 The **Admin** and **Settings** groups are admin-only. At the bottom sit the
@@ -211,13 +218,229 @@ deletes. The active layout is marked **active**, and unsaved changes show an
 **unsaved** chip beside the panel name. Layouts are per-user: yours are yours
 unless an admin publishes a panel as a room panel.
 
-### Room panels
+### Panel settings
 
-An administrator can promote a panel from **personal** to a private or public
-room panel, bind it to an audio output, and give it a slug. A public panel then
-opens at `/p/{slug}` as a kiosk view with no sign-in, scoped to exactly that
-panel's sources and output — the wall-panel case. Selecting a pad on a room
-panel drives the bound output; deselecting stops it.
+**SETTINGS** on the panel toolbar opens **Panel settings**, where an
+administrator turns a personal layout into a room panel.
+
+![Panel settings](img/15-panel-settings.png)
+
+| Setting | What it does |
+|---|---|
+| **VISIBILITY** | **PERSONAL**, **PRIVATE** or **PUBLIC** — see below. |
+| **RACK** | **1RU** or **2RU**. 1RU is a single row of pads; 2RU is two. |
+| **PANEL OUTPUT** | The audio output the active pad's source is routed to. Room panels require one: *"Assign an output — room panels route the active pad's source to it."* |
+| **Stream audio to the browser** | *"On: the loaded view also monitors the source. Off: a silent control surface that only switches the physical output."* |
+| **PUBLIC PATH** | The slug a public panel answers on, e.g. `/p/studio-1`. Must be unique. |
+| **Allowed users** | Private panels only: *"Comma-separated usernames who may access this private panel. Blank = any logged-in user."* |
+| **Allowed groups** | Private panels only: *"Members of a ticked group may access this private panel (in addition to the users above)."* With no groups defined it reads *"No groups defined — create them under Admin › Groups."* |
+
+The allow-lists appear only when **PRIVATE** is selected — a public panel is
+open to every session, and a personal one to nobody but its owner.
+
+**COLS** on the toolbar sets how many pads per row, independently of the rack
+size. A 1RU panel with four columns is four pads; a 2RU panel with eight is
+sixteen.
+
+Once an output is bound, the panel carries a banner reading *"Pads switch the
+source feeding {output}"*, with a **CONTROL ONLY** chip when browser audio is
+off. That is the wall-panel case: the operator presses a pad, the physical
+output follows, and nothing is streamed to the browser at all.
+
+### Visibility: personal, private and public
+
+| Visibility | Who reaches it | Output binding |
+|---|---|---|
+| **PERSONAL** | Only its owner. *"Your own monitoring layout — browser listen only, no output binding."* | None — a personal panel cannot drive an output. |
+| **PRIVATE** | Any signed-in user; or, once **Allowed users** or **Allowed groups** is set, only those accounts and the members of those groups (admins always). | Required. |
+| **PUBLIC** | Any signed-in user, at the panel's own path `/p/{slug}`. | Required. |
+
+> **Public does not yet mean anonymous.** The in-app hint reads *"reachable at
+> /p/{slug} with no login (the kiosk view lands in wave 2)"*. The kiosk view
+> **has** shipped, but the no-login half has not: the endpoint behind it is
+> still gated on a valid user session, and an external panel token — the `pt_`
+> credential issued under **Panel control** — satisfies only the panel policy,
+> not this one. A wall display therefore still needs a signed-in browser
+> session today. Treat the hint as stale on both counts.
+
+### The kiosk view
+
+A public panel opens at `/p/{slug}` as a chrome-free view: the panel name, the
+rack, and nothing else — no sidebar, no navigation away from it.
+
+![The kiosk view of a public panel](img/16-kiosk-public-panel.png)
+
+Pads behave exactly as they do in the console: pressing one makes it the active
+pad and routes its source to the panel's output. A pad whose source is not in
+live inventory shows **MISSING** rather than disappearing, so a wall panel does
+not silently reshuffle when a device drops off air. If the slug does not match
+a public panel, the view says so: *"No public panel at "{slug}" — check the
+address with your administrator."*
+
+---
+
+## 6. Audio outputs
+
+An audio output makes the server an audio **emitter**, not just a browser
+gateway. A source routed to an output is passed through as live audio — RTP in,
+PCM out — *in addition to* the Opus stream a browser might be listening to.
+This is what lets a panel press change what comes out of a studio's overhead
+speakers.
+
+Outputs need GStreamer on the server. **Audio Outputs** is admin-only.
+
+![Audio outputs](img/12-audio-outputs.png)
+
+The table lists each output's **NAME**, **KIND**, **STATUS** (**running**,
+**stopped** or **error**), an **ENABLED** toggle, **FORMAT** and **ENDPOINT**.
+**Test** pushes tone to the output so it can be confirmed at the speaker
+without routing a source to it.
+
+Three kinds:
+
+| Kind | Endpoint | Notes |
+|---|---|---|
+| **ALSA** | A device string such as `hw:1,0` | Linux hosts. |
+| **AES67** | A multicast group, port and packet time | Sends AES67 onto the AoIP network. |
+| **ASIO** | An ASIO driver name | *"ASIO runs on Windows hosts only."* On a non-Windows console the picker is disabled with *"This console isn't running on Windows — the ASIO device can't be configured from here."* |
+
+### Configuring an AES67 output
+
+![Editing an AES67 output](img/13-audio-output-aes67.png)
+
+| Field | Meaning |
+|---|---|
+| **Name** | Free text; what the panel's output picker and the routing editor show. |
+| **Kind** | **AES67**. |
+| **Multicast address** | The group the stream is sent to, e.g. `239.70.9.1`. Validated: *"Enter a valid multicast address (e.g. 239.69.1.5)"*. |
+| **port** | Destination UDP port; AES67 convention is 5004. |
+| **packet time** | Packet time in **ms**. 1 ms is the AES67 interop point — at 48 kHz that is 48 frames per packet. |
+| **Adapter** | The egress interface. **Default route (OS chooses)** lets the host decide; on a multi-homed server pick the AoIP NIC explicitly, or the RTP leaves on the wrong network. An adapter that no longer exists is marked **not found on this host**. |
+| **Channels** / **Sample rate** | 2 ch @ 48000 for a normal stereo AES67 stream. |
+| **Enabled** | Whether the sender runs. |
+
+The output is announced over SAP so AES67 receivers can discover it, and the
+announcement declares the sender's clock. A clock chip shows which: **PTP**
+(*"Locked to PTP grandmaster … — clock-compatible with the AES67 plant"*) or
+**Free-run** (*"Free-running on the system clock. Receivers that require a
+shared PTP clock may refuse to subscribe."*). Free-run is legal and announced
+honestly, but a Dante or Ravenna receiver may decline it.
+
+### Routing sources to outputs
+
+**SOURCE ROUTING**, below the table, is the persistent assignment: *"Assign the
+sources that feed each output. Search by source name, device, channel or
+multicast address — a source can feed only one output."*
+
+Each output lists what feeds it, and carries a **Panel: {name}** chip when a
+panel drives it — *"This output is driven by a panel — the selected pad routes
+its source here."* A routed source that has left the inventory is marked
+**offline**: *"This source is routed but is not in the live inventory right now
+— the device may be offline or renamed. The route is kept."* Routes survive the
+source going away, which is what you want when a studio is simply switched off
+overnight.
+
+Changes are staged until **Save routing**; an **Unsaved routing changes** note
+appears while they are.
+
+## 7. Server administration
+
+### Groups
+
+A group collects users so a panel or a source list can be granted to all of
+them at once, rather than naming each account on every panel.
+
+![Groups](img/19-groups.png)
+
+**New group** creates one; **Members** picks the accounts in it. The page's own
+summary states the rule: *"Groups collect users so a panel or source list can be
+granted to all of them at once. Access is granted to a user directly or through
+any group they belong to."* Deleting a group is not silent about consequences —
+*"Delete group "{name}"? Panels and lists that grant it lose that grant."*
+
+Grants are additive and independent: a user reaches a private panel if they are
+named on it directly **or** belong to any group it grants. Administrators always
+have access regardless.
+
+> The **Allowed groups** hint in panel settings says *"Enforced in wave 2"*.
+> For private panels that is out of date — group membership is already checked
+> server-side when deciding who may drive a panel.
+
+### General
+
+![General settings](img/10-settings-general.png)
+
+**Public base URL** is the address the server advertises for itself; blank
+derives it from the request. **OIDC SSO** and **LDAP directory sign-in** are
+configured here, each with **Role mappings** that translate a claim value or
+directory group to the **admin** or **user** role — *first match wins*, with a
+**Default role** and an option to **refuse unmapped users**. The redirect URI
+to register with an OIDC provider is shown for copying, and *"Internal sign-in
+always remains available as break-glass"*, so a misconfigured provider cannot
+lock everyone out. **Test connection** validates LDAP against the **saved**
+settings, so save before testing.
+
+**Streaming / Opus** controls the encoder every browser listener gets:
+**Complexity** (*"0 = lightest CPU, 10 = best quality"*), **Application**
+(**Audio (music)**, **VoIP (speech)** or **Low delay**), **Variable bitrate**
+and **Force stereo**.
+
+### TLS
+
+![TLS settings](img/17-settings-tls.png)
+
+**Current certificate** shows the installed certificate's **Subject**,
+**Issuer**, **Validity**, **Thumbprint** and **Subject alt names**, along with
+its source (**uploaded** or **self-signed**) and how long it has left — *"Valid
+— {days} days remaining"*, *"Expires in {days} days … renew soon"*, or
+*"Expired on {date}"*.
+
+Below it, **HTTPS binding** enables HTTPS on a chosen port (*"Install a
+certificate before enabling HTTPS"*), **Generate self-signed certificate**
+mints one for a list of DNS names or IPs, and **Upload PFX / PKCS#12** installs
+a real certificate. **Remove certificate** disables HTTPS again.
+
+### Email
+
+![Email settings](img/18-settings-email.png)
+
+*"Outgoing mail server used for notifications such as backup-failure alerts."*
+Server, port, SSL/TLS, optional credentials and the From address. A stored
+password is never returned to the browser — the field shows **password set**,
+and *"leave the field empty to keep it"*.
+
+### Backups
+
+**Settings › Backups** is a placeholder in this build: *"Scheduled device
+config backups are coming with a later stage of the port."* Device
+configuration backup itself lives under **Devices**.
+
+## 8. Licence
+
+![The Licence page](img/11-licence.png)
+
+**Settings › Licence** shows whether the installation is **Licensed** or
+**Unlicensed**, and for a licensed one the **Licensed to** name, **Serial**,
+**Issued** date and **Expires** date — which may read **Never (perpetual)**.
+
+Activation takes a serial: enter it under **Activate licence** and press
+**Activate**. Activation is bound to the machine, and the page shows the
+**Hardware ID:** the licence is issued against, which is what support needs
+when a serial has to be reissued for new hardware. **Deactivate licence**
+releases it.
+
+A licence grants named features. Three are gated in this build:
+
+| Feature | What it unlocks |
+|---|---|
+| **Federation** | Aggregating sources from peer servers. |
+| **External Stream Deck / API** | Panel tokens and the external control API. |
+| **Device firmware & backups** | Firmware banks and device configuration backup/restore. |
+
+Reaching a gated feature without a licence shows the reason inline: *""{feature}"
+requires a licence — install one under Settings › Licence."* Audio monitoring
+itself is not gated — an unlicensed server still discovers sources and streams
+them to a browser, so a plant is never taken off air by a licence problem.
 
 ---
 
@@ -228,18 +451,18 @@ not yet documented here. They are the subject of the next revisions:
 
 - **Devices** — Axia device management: LWRP terminal, configuration backup and
   restore, scheduled backup tasks, firmware banks.
-- **Audio Outputs** — server-side passthrough to ALSA/ASIO devices and AES67
-  streams via GStreamer, and the IO editor.
 - **Federation** and **Legacy Servers** — aggregating sources from peer
   RemotePlay servers and from legacy RemotePlay installations.
-- **Summary**, **Users**, **API Keys** — administration.
-- **Settings** — **General**, **TLS**, **Email**, **Backups**.
-- **Licence** — activation, feature gates and the unlicensed preview state.
+- **Summary** and **Users** — the admin overview and account management.
+- **Panel control** — issuing `pt_` panel tokens for external controllers.
 - The REST API and WebSocket streaming contract.
+
+**API Keys** and **Settings › Backups** are placeholders in this build and say
+so in the UI; there is nothing to document yet.
 
 ---
 
-*Generated against main @ `HEAD`, RPC-1…RPC-102. Screenshots captured with
+*Generated against main @ `931f6b8`, RPC-1…RPC-115. Screenshots captured with
 `build/manual-screenshots.mjs` against a live instance fed by
 `RemotePlayCore.LivewireSim` and `RemotePlayCore.Aes67Sim`; see
 [manual-maintenance.md](../manual-maintenance.md).*

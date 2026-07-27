@@ -150,7 +150,19 @@
 <a class="toc-h2" href="#5-monitoring-panels">5. Monitoring panels</a>
 <a class="toc-h3" href="#assigning-sources">Assigning sources</a>
 <a class="toc-h3" href="#layouts">Layouts</a>
-<a class="toc-h3" href="#room-panels">Room panels</a>
+<a class="toc-h3" href="#panel-settings">Panel settings</a>
+<a class="toc-h3" href="#visibility-personal-private-and-public">Visibility: personal, private and public</a>
+<a class="toc-h3" href="#the-kiosk-view">The kiosk view</a>
+<a class="toc-h2" href="#6-audio-outputs">6. Audio outputs</a>
+<a class="toc-h3" href="#configuring-an-aes67-output">Configuring an AES67 output</a>
+<a class="toc-h3" href="#routing-sources-to-outputs">Routing sources to outputs</a>
+<a class="toc-h2" href="#7-server-administration">7. Server administration</a>
+<a class="toc-h3" href="#groups">Groups</a>
+<a class="toc-h3" href="#general">General</a>
+<a class="toc-h3" href="#tls">TLS</a>
+<a class="toc-h3" href="#email">Email</a>
+<a class="toc-h3" href="#backups">Backups</a>
+<a class="toc-h2" href="#8-licence">8. Licence</a>
 <a class="toc-h2" href="#what-this-revision-does-not-cover">What this revision does not cover</a>
 </nav>
 <main>
@@ -164,10 +176,11 @@ hardware receiver and without joining the multicast groups themselves.</p>
 against the shipping build; every label in <strong>bold</strong> is quoted verbatim from the
 UI.</p>
 <blockquote>
-<p><strong>This revision is a first pass.</strong> It covers signing in, the Sources console,
-source lists and monitoring panels. Devices, audio outputs, federation,
-licensing and the REST surface are named where they appear but not yet
-documented in full — see <a href="#what-this-revision-does-not-cover">What this revision does not cover</a>.</p>
+<p><strong>This revision is not yet complete.</strong> It covers signing in, the Sources
+console, source lists, monitoring panels, audio outputs, server settings and
+licensing. Device management, federation and the REST surface are named where
+they appear but not yet documented in full — see
+<a href="#what-this-revision-does-not-cover">What this revision does not cover</a>.</p>
 </blockquote>
 
 <hr>
@@ -247,7 +260,7 @@ the home affordance — clicking it returns to <strong>Sources</strong>. Below i
 </tr>
 <tr>
 <td><strong>Admin</strong></td>
-<td><strong>Summary</strong>, <strong>Users</strong>, <strong>API Keys</strong>, <strong>Legacy Servers</strong>, <strong>Audio Outputs</strong>, <strong>Federation</strong></td>
+<td><strong>Summary</strong>, <strong>Users</strong>, <strong>Groups</strong>, <strong>API Keys</strong>, <strong>Legacy Servers</strong>, <strong>Audio Outputs</strong>, <strong>Federation</strong></td>
 </tr>
 <tr>
 <td><strong>Settings</strong></td>
@@ -377,12 +390,287 @@ the current arrangement under a new name, and <strong>Manage layouts…</strong>
 deletes. The active layout is marked <strong>active</strong>, and unsaved changes show an
 <strong>unsaved</strong> chip beside the panel name. Layouts are per-user: yours are yours
 unless an admin publishes a panel as a room panel.</p>
-<h3 id="room-panels">Room panels</h3>
-<p>An administrator can promote a panel from <strong>personal</strong> to a private or public
-room panel, bind it to an audio output, and give it a slug. A public panel then
-opens at <code>/p/{slug}</code> as a kiosk view with no sign-in, scoped to exactly that
-panel&#39;s sources and output — the wall-panel case. Selecting a pad on a room
-panel drives the bound output; deselecting stops it.</p>
+<h3 id="panel-settings">Panel settings</h3>
+<p><strong>SETTINGS</strong> on the panel toolbar opens <strong>Panel settings</strong>, where an
+administrator turns a personal layout into a room panel.</p>
+<p><img src="img/15-panel-settings.png" alt="Panel settings"></p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>VISIBILITY</strong></td>
+<td><strong>PERSONAL</strong>, <strong>PRIVATE</strong> or <strong>PUBLIC</strong> — see below.</td>
+</tr>
+<tr>
+<td><strong>RACK</strong></td>
+<td><strong>1RU</strong> or <strong>2RU</strong>. 1RU is a single row of pads; 2RU is two.</td>
+</tr>
+<tr>
+<td><strong>PANEL OUTPUT</strong></td>
+<td>The audio output the active pad&#39;s source is routed to. Room panels require one: <em>&quot;Assign an output — room panels route the active pad&#39;s source to it.&quot;</em></td>
+</tr>
+<tr>
+<td><strong>Stream audio to the browser</strong></td>
+<td><em>&quot;On: the loaded view also monitors the source. Off: a silent control surface that only switches the physical output.&quot;</em></td>
+</tr>
+<tr>
+<td><strong>PUBLIC PATH</strong></td>
+<td>The slug a public panel answers on, e.g. <code>/p/studio-1</code>. Must be unique.</td>
+</tr>
+<tr>
+<td><strong>Allowed users</strong></td>
+<td>Private panels only: <em>&quot;Comma-separated usernames who may access this private panel. Blank = any logged-in user.&quot;</em></td>
+</tr>
+<tr>
+<td><strong>Allowed groups</strong></td>
+<td>Private panels only: <em>&quot;Members of a ticked group may access this private panel (in addition to the users above).&quot;</em> With no groups defined it reads <em>&quot;No groups defined — create them under Admin › Groups.&quot;</em></td>
+</tr>
+</tbody></table>
+<p>The allow-lists appear only when <strong>PRIVATE</strong> is selected — a public panel is
+open to every session, and a personal one to nobody but its owner.</p>
+<p><strong>COLS</strong> on the toolbar sets how many pads per row, independently of the rack
+size. A 1RU panel with four columns is four pads; a 2RU panel with eight is
+sixteen.</p>
+<p>Once an output is bound, the panel carries a banner reading <em>&quot;Pads switch the
+source feeding {output}&quot;</em>, with a <strong>CONTROL ONLY</strong> chip when browser audio is
+off. That is the wall-panel case: the operator presses a pad, the physical
+output follows, and nothing is streamed to the browser at all.</p>
+<h3 id="visibility-personal-private-and-public">Visibility: personal, private and public</h3>
+<table>
+<thead>
+<tr>
+<th>Visibility</th>
+<th>Who reaches it</th>
+<th>Output binding</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>PERSONAL</strong></td>
+<td>Only its owner. <em>&quot;Your own monitoring layout — browser listen only, no output binding.&quot;</em></td>
+<td>None — a personal panel cannot drive an output.</td>
+</tr>
+<tr>
+<td><strong>PRIVATE</strong></td>
+<td>Any signed-in user; or, once <strong>Allowed users</strong> or <strong>Allowed groups</strong> is set, only those accounts and the members of those groups (admins always).</td>
+<td>Required.</td>
+</tr>
+<tr>
+<td><strong>PUBLIC</strong></td>
+<td>Any signed-in user, at the panel&#39;s own path <code>/p/{slug}</code>.</td>
+<td>Required.</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p><strong>Public does not yet mean anonymous.</strong> The in-app hint reads <em>&quot;reachable at
+/p/{slug} with no login (the kiosk view lands in wave 2)&quot;</em>. The kiosk view
+<strong>has</strong> shipped, but the no-login half has not: the endpoint behind it is
+still gated on a valid user session, and an external panel token — the <code>pt_</code>
+credential issued under <strong>Panel control</strong> — satisfies only the panel policy,
+not this one. A wall display therefore still needs a signed-in browser
+session today. Treat the hint as stale on both counts.</p>
+</blockquote>
+<h3 id="the-kiosk-view">The kiosk view</h3>
+<p>A public panel opens at <code>/p/{slug}</code> as a chrome-free view: the panel name, the
+rack, and nothing else — no sidebar, no navigation away from it.</p>
+<p><img src="img/16-kiosk-public-panel.png" alt="The kiosk view of a public panel"></p>
+<p>Pads behave exactly as they do in the console: pressing one makes it the active
+pad and routes its source to the panel&#39;s output. A pad whose source is not in
+live inventory shows <strong>MISSING</strong> rather than disappearing, so a wall panel does
+not silently reshuffle when a device drops off air. If the slug does not match
+a public panel, the view says so: <em>&quot;No public panel at &quot;{slug}&quot; — check the
+address with your administrator.&quot;</em></p>
+<hr>
+<h2 id="6-audio-outputs">6. Audio outputs</h2>
+<p>An audio output makes the server an audio <strong>emitter</strong>, not just a browser
+gateway. A source routed to an output is passed through as live audio — RTP in,
+PCM out — <em>in addition to</em> the Opus stream a browser might be listening to.
+This is what lets a panel press change what comes out of a studio&#39;s overhead
+speakers.</p>
+<p>Outputs need GStreamer on the server. <strong>Audio Outputs</strong> is admin-only.</p>
+<p><img src="img/12-audio-outputs.png" alt="Audio outputs"></p>
+<p>The table lists each output&#39;s <strong>NAME</strong>, <strong>KIND</strong>, <strong>STATUS</strong> (<strong>running</strong>,
+<strong>stopped</strong> or <strong>error</strong>), an <strong>ENABLED</strong> toggle, <strong>FORMAT</strong> and <strong>ENDPOINT</strong>.
+<strong>Test</strong> pushes tone to the output so it can be confirmed at the speaker
+without routing a source to it.</p>
+<p>Three kinds:</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Endpoint</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>ALSA</strong></td>
+<td>A device string such as <code>hw:1,0</code></td>
+<td>Linux hosts.</td>
+</tr>
+<tr>
+<td><strong>AES67</strong></td>
+<td>A multicast group, port and packet time</td>
+<td>Sends AES67 onto the AoIP network.</td>
+</tr>
+<tr>
+<td><strong>ASIO</strong></td>
+<td>An ASIO driver name</td>
+<td><em>&quot;ASIO runs on Windows hosts only.&quot;</em> On a non-Windows console the picker is disabled with <em>&quot;This console isn&#39;t running on Windows — the ASIO device can&#39;t be configured from here.&quot;</em></td>
+</tr>
+</tbody></table>
+<h3 id="configuring-an-aes67-output">Configuring an AES67 output</h3>
+<p><img src="img/13-audio-output-aes67.png" alt="Editing an AES67 output"></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Name</strong></td>
+<td>Free text; what the panel&#39;s output picker and the routing editor show.</td>
+</tr>
+<tr>
+<td><strong>Kind</strong></td>
+<td><strong>AES67</strong>.</td>
+</tr>
+<tr>
+<td><strong>Multicast address</strong></td>
+<td>The group the stream is sent to, e.g. <code>239.70.9.1</code>. Validated: <em>&quot;Enter a valid multicast address (e.g. 239.69.1.5)&quot;</em>.</td>
+</tr>
+<tr>
+<td><strong>port</strong></td>
+<td>Destination UDP port; AES67 convention is 5004.</td>
+</tr>
+<tr>
+<td><strong>packet time</strong></td>
+<td>Packet time in <strong>ms</strong>. 1 ms is the AES67 interop point — at 48 kHz that is 48 frames per packet.</td>
+</tr>
+<tr>
+<td><strong>Adapter</strong></td>
+<td>The egress interface. <strong>Default route (OS chooses)</strong> lets the host decide; on a multi-homed server pick the AoIP NIC explicitly, or the RTP leaves on the wrong network. An adapter that no longer exists is marked <strong>not found on this host</strong>.</td>
+</tr>
+<tr>
+<td><strong>Channels</strong> / <strong>Sample rate</strong></td>
+<td>2 ch @ 48000 for a normal stereo AES67 stream.</td>
+</tr>
+<tr>
+<td><strong>Enabled</strong></td>
+<td>Whether the sender runs.</td>
+</tr>
+</tbody></table>
+<p>The output is announced over SAP so AES67 receivers can discover it, and the
+announcement declares the sender&#39;s clock. A clock chip shows which: <strong>PTP</strong>
+(<em>&quot;Locked to PTP grandmaster … — clock-compatible with the AES67 plant&quot;</em>) or
+<strong>Free-run</strong> (<em>&quot;Free-running on the system clock. Receivers that require a
+shared PTP clock may refuse to subscribe.&quot;</em>). Free-run is legal and announced
+honestly, but a Dante or Ravenna receiver may decline it.</p>
+<h3 id="routing-sources-to-outputs">Routing sources to outputs</h3>
+<p><strong>SOURCE ROUTING</strong>, below the table, is the persistent assignment: <em>&quot;Assign the
+sources that feed each output. Search by source name, device, channel or
+multicast address — a source can feed only one output.&quot;</em></p>
+<p>Each output lists what feeds it, and carries a <strong>Panel: {name}</strong> chip when a
+panel drives it — <em>&quot;This output is driven by a panel — the selected pad routes
+its source here.&quot;</em> A routed source that has left the inventory is marked
+<strong>offline</strong>: <em>&quot;This source is routed but is not in the live inventory right now
+— the device may be offline or renamed. The route is kept.&quot;</em> Routes survive the
+source going away, which is what you want when a studio is simply switched off
+overnight.</p>
+<p>Changes are staged until <strong>Save routing</strong>; an <strong>Unsaved routing changes</strong> note
+appears while they are.</p>
+<h2 id="7-server-administration">7. Server administration</h2>
+<h3 id="groups">Groups</h3>
+<p>A group collects users so a panel or a source list can be granted to all of
+them at once, rather than naming each account on every panel.</p>
+<p><img src="img/19-groups.png" alt="Groups"></p>
+<p><strong>New group</strong> creates one; <strong>Members</strong> picks the accounts in it. The page&#39;s own
+summary states the rule: <em>&quot;Groups collect users so a panel or source list can be
+granted to all of them at once. Access is granted to a user directly or through
+any group they belong to.&quot;</em> Deleting a group is not silent about consequences —
+<em>&quot;Delete group &quot;{name}&quot;? Panels and lists that grant it lose that grant.&quot;</em></p>
+<p>Grants are additive and independent: a user reaches a private panel if they are
+named on it directly <strong>or</strong> belong to any group it grants. Administrators always
+have access regardless.</p>
+<blockquote>
+<p>The <strong>Allowed groups</strong> hint in panel settings says <em>&quot;Enforced in wave 2&quot;</em>.
+For private panels that is out of date — group membership is already checked
+server-side when deciding who may drive a panel.</p>
+</blockquote>
+<h3 id="general">General</h3>
+<p><img src="img/10-settings-general.png" alt="General settings"></p>
+<p><strong>Public base URL</strong> is the address the server advertises for itself; blank
+derives it from the request. <strong>OIDC SSO</strong> and <strong>LDAP directory sign-in</strong> are
+configured here, each with <strong>Role mappings</strong> that translate a claim value or
+directory group to the <strong>admin</strong> or <strong>user</strong> role — <em>first match wins</em>, with a
+<strong>Default role</strong> and an option to <strong>refuse unmapped users</strong>. The redirect URI
+to register with an OIDC provider is shown for copying, and <em>&quot;Internal sign-in
+always remains available as break-glass&quot;</em>, so a misconfigured provider cannot
+lock everyone out. <strong>Test connection</strong> validates LDAP against the <strong>saved</strong>
+settings, so save before testing.</p>
+<p><strong>Streaming / Opus</strong> controls the encoder every browser listener gets:
+<strong>Complexity</strong> (<em>&quot;0 = lightest CPU, 10 = best quality&quot;</em>), <strong>Application</strong>
+(<strong>Audio (music)</strong>, <strong>VoIP (speech)</strong> or <strong>Low delay</strong>), <strong>Variable bitrate</strong>
+and <strong>Force stereo</strong>.</p>
+<h3 id="tls">TLS</h3>
+<p><img src="img/17-settings-tls.png" alt="TLS settings"></p>
+<p><strong>Current certificate</strong> shows the installed certificate&#39;s <strong>Subject</strong>,
+<strong>Issuer</strong>, <strong>Validity</strong>, <strong>Thumbprint</strong> and <strong>Subject alt names</strong>, along with
+its source (<strong>uploaded</strong> or <strong>self-signed</strong>) and how long it has left — <em>&quot;Valid
+— {days} days remaining&quot;</em>, <em>&quot;Expires in {days} days … renew soon&quot;</em>, or
+<em>&quot;Expired on {date}&quot;</em>.</p>
+<p>Below it, <strong>HTTPS binding</strong> enables HTTPS on a chosen port (<em>&quot;Install a
+certificate before enabling HTTPS&quot;</em>), <strong>Generate self-signed certificate</strong>
+mints one for a list of DNS names or IPs, and <strong>Upload PFX / PKCS#12</strong> installs
+a real certificate. <strong>Remove certificate</strong> disables HTTPS again.</p>
+<h3 id="email">Email</h3>
+<p><img src="img/18-settings-email.png" alt="Email settings"></p>
+<p><em>&quot;Outgoing mail server used for notifications such as backup-failure alerts.&quot;</em>
+Server, port, SSL/TLS, optional credentials and the From address. A stored
+password is never returned to the browser — the field shows <strong>password set</strong>,
+and <em>&quot;leave the field empty to keep it&quot;</em>.</p>
+<h3 id="backups">Backups</h3>
+<p><strong>Settings › Backups</strong> is a placeholder in this build: <em>&quot;Scheduled device
+config backups are coming with a later stage of the port.&quot;</em> Device
+configuration backup itself lives under <strong>Devices</strong>.</p>
+<h2 id="8-licence">8. Licence</h2>
+<p><img src="img/11-licence.png" alt="The Licence page"></p>
+<p><strong>Settings › Licence</strong> shows whether the installation is <strong>Licensed</strong> or
+<strong>Unlicensed</strong>, and for a licensed one the <strong>Licensed to</strong> name, <strong>Serial</strong>,
+<strong>Issued</strong> date and <strong>Expires</strong> date — which may read <strong>Never (perpetual)</strong>.</p>
+<p>Activation takes a serial: enter it under <strong>Activate licence</strong> and press
+<strong>Activate</strong>. Activation is bound to the machine, and the page shows the
+<strong>Hardware ID:</strong> the licence is issued against, which is what support needs
+when a serial has to be reissued for new hardware. <strong>Deactivate licence</strong>
+releases it.</p>
+<p>A licence grants named features. Three are gated in this build:</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>What it unlocks</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Federation</strong></td>
+<td>Aggregating sources from peer servers.</td>
+</tr>
+<tr>
+<td><strong>External Stream Deck / API</strong></td>
+<td>Panel tokens and the external control API.</td>
+</tr>
+<tr>
+<td><strong>Device firmware &amp; backups</strong></td>
+<td>Firmware banks and device configuration backup/restore.</td>
+</tr>
+</tbody></table>
+<p>Reaching a gated feature without a licence shows the reason inline: <em>&quot;&quot;{feature}&quot;
+requires a licence — install one under Settings › Licence.&quot;</em> Audio monitoring
+itself is not gated — an unlicensed server still discovers sources and streams
+them to a browser, so a plant is never taken off air by a licence problem.</p>
 <hr>
 <h2 id="what-this-revision-does-not-cover">What this revision does not cover</h2>
 <p>These areas exist in the product and are reachable from the sidebar, but are
@@ -390,17 +678,16 @@ not yet documented here. They are the subject of the next revisions:</p>
 <ul>
 <li><strong>Devices</strong> — Axia device management: LWRP terminal, configuration backup and
 restore, scheduled backup tasks, firmware banks.</li>
-<li><strong>Audio Outputs</strong> — server-side passthrough to ALSA/ASIO devices and AES67
-streams via GStreamer, and the IO editor.</li>
 <li><strong>Federation</strong> and <strong>Legacy Servers</strong> — aggregating sources from peer
 RemotePlay servers and from legacy RemotePlay installations.</li>
-<li><strong>Summary</strong>, <strong>Users</strong>, <strong>API Keys</strong> — administration.</li>
-<li><strong>Settings</strong> — <strong>General</strong>, <strong>TLS</strong>, <strong>Email</strong>, <strong>Backups</strong>.</li>
-<li><strong>Licence</strong> — activation, feature gates and the unlicensed preview state.</li>
+<li><strong>Summary</strong> and <strong>Users</strong> — the admin overview and account management.</li>
+<li><strong>Panel control</strong> — issuing <code>pt_</code> panel tokens for external controllers.</li>
 <li>The REST API and WebSocket streaming contract.</li>
 </ul>
+<p><strong>API Keys</strong> and <strong>Settings › Backups</strong> are placeholders in this build and say
+so in the UI; there is nothing to document yet.</p>
 <hr>
-<p><em>Generated against main @ <code>HEAD</code>, RPC-1…RPC-102. Screenshots captured with
+<p><em>Generated against main @ <code>931f6b8</code>, RPC-1…RPC-115. Screenshots captured with
 <code>build/manual-screenshots.mjs</code> against a live instance fed by
 <code>RemotePlayCore.LivewireSim</code> and <code>RemotePlayCore.Aes67Sim</code>; see
 <a href="../manual-maintenance.md">manual-maintenance.md</a>.</em></p>
