@@ -1,0 +1,1629 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Remote Talk — the complete manual</title>
+
+<style>
+  /* ============================================================
+     Remote Talk — deep manual (RPC-201, epic RPC-126)
+     Visual language mirrors the "how the intercom works" brief:
+     intercom-hardware palette — graphite panel, amber tally lamp
+     (talk), teal listen path, slate program/IFB feed. System sans
+     for prose, monospace for silkscreen labels, identifiers, wire
+     frames and every number.
+     ============================================================ */
+
+  :root {
+    --bg:        #F2F3F4;
+    --panel:     #FFFFFF;
+    --panel-2:   #E9EBED;
+    --rule:      #D3D7DB;
+    --rule-soft: #E3E6E9;
+    --ink:       #14171B;
+    --ink-2:     #3D4550;
+    --muted:     #5F6873;
+
+    --talk:      #C67F0B;   /* mic open — tally amber */
+    --talk-soft: #F4E3C4;
+    --listen:    #2E7C88;   /* listen path — teal */
+    --listen-soft:#D3E6E9;
+    --prog:      #5D6B84;   /* program / IFB feed — slate */
+    --alarm:     #B23A31;
+    --ok:        #2F7A52;
+
+    --measure: 68ch;
+    --gap: clamp(1rem, 2.5vw, 1.75rem);
+
+    --sans: ui-sans-serif, "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: "Cascadia Code", "Cascadia Mono", ui-monospace, Consolas, "SF Mono", Menlo, monospace;
+
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:        #131619;
+      --panel:     #1A1E22;
+      --panel-2:   #23282E;
+      --rule:      #333A42;
+      --rule-soft: #262C33;
+      --ink:       #E6E9EC;
+      --ink-2:     #BFC6CD;
+      --muted:     #929BA5;
+      --talk:      #E6A32C;
+      --talk-soft: #3A2E17;
+      --listen:    #56B3BF;
+      --listen-soft:#16302F;
+      --prog:      #8E9CB5;
+      --alarm:     #E0685C;
+      --ok:        #5FB584;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:#131619; --panel:#1A1E22; --panel-2:#23282E; --rule:#333A42; --rule-soft:#262C33;
+    --ink:#E6E9EC; --ink-2:#BFC6CD; --muted:#929BA5;
+    --talk:#E6A32C; --talk-soft:#3A2E17; --listen:#56B3BF; --listen-soft:#16302F;
+    --prog:#8E9CB5; --alarm:#E0685C; --ok:#5FB584; color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg:#F2F3F4; --panel:#FFFFFF; --panel-2:#E9EBED; --rule:#D3D7DB; --rule-soft:#E3E6E9;
+    --ink:#14171B; --ink-2:#3D4550; --muted:#5F6873;
+    --talk:#C67F0B; --talk-soft:#F4E3C4; --listen:#2E7C88; --listen-soft:#D3E6E9;
+    --prog:#5D6B84; --alarm:#B23A31; --ok:#2F7A52; color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    display: grid;
+    grid-template-columns:
+      minmax(1rem, 1fr)
+      [rail-start] minmax(0, 4.5rem)
+      [text-start] minmax(0, var(--measure)) [text-end]
+      minmax(1rem, 1fr) [rail-end];
+    column-gap: 0; row-gap: 0;
+    padding: 0 clamp(1rem, 4vw, 3rem);
+  }
+  .wrap > * { grid-column: text-start / text-end; }
+  .wrap > .bleed { grid-column: rail-start / rail-end; }
+
+  @media (max-width: 60rem) {
+    .wrap { grid-template-columns: [rail-start text-start] minmax(0, 1fr) [text-end rail-end]; }
+  }
+
+  header.masthead {
+    padding: clamp(3rem, 8vw, 6rem) 0 2.5rem;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 3rem;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 1.25rem;
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem;
+  }
+  .eyebrow b { color: var(--talk); font-weight: 600; }
+
+  h1 {
+    font-size: clamp(2.1rem, 5.5vw, 3.4rem); line-height: 1.04;
+    letter-spacing: -0.028em; font-weight: 660; margin: 0 0 1rem; text-wrap: balance;
+  }
+  .standfirst {
+    font-size: clamp(1.05rem, 2.2vw, 1.22rem); line-height: 1.55;
+    color: var(--ink-2); margin: 0 0 2rem; max-width: 60ch;
+  }
+  .sourcelist {
+    display: grid; gap: 0.35rem; font-family: var(--mono); font-size: 0.78rem;
+    color: var(--muted); border-left: 2px solid var(--rule); padding-left: 1rem;
+  }
+  .sourcelist span b { color: var(--ink-2); font-weight: 500; }
+
+  /* --- table of contents ------------------------------------------- */
+  nav.toc {
+    background: var(--panel); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 1.1rem 1.3rem; margin: 0 0 1rem;
+  }
+  nav.toc h4 { margin: 0 0 0.6rem; }
+  nav.toc ol { margin: 0; padding-left: 1.2rem; columns: 2; column-gap: 2rem; }
+  @media (max-width: 40rem) { nav.toc ol { columns: 1; } }
+  nav.toc li { margin-bottom: 0.35rem; break-inside: avoid; }
+  nav.toc a { font-size: 0.92rem; }
+
+  section { padding-bottom: 3.5rem; }
+  section > * { grid-column: text-start / text-end; }
+
+  h2 {
+    font-size: clamp(1.35rem, 3vw, 1.7rem); line-height: 1.2; letter-spacing: -0.018em;
+    font-weight: 640; margin: 2.5rem 0 1rem; text-wrap: balance; position: relative;
+    scroll-margin-top: 1rem;
+  }
+  h2 .num {
+    position: absolute; left: -4.5rem; top: 0.35em; font-family: var(--mono);
+    font-size: 0.72rem; letter-spacing: 0.08em; color: var(--talk); font-weight: 500;
+  }
+  @media (max-width: 60rem) { h2 .num { position: static; display: block; margin-bottom: 0.4rem; } }
+  h3 { font-size: 1.02rem; font-weight: 640; letter-spacing: -0.006em; margin: 2rem 0 0.5rem; scroll-margin-top: 1rem; }
+  h4 {
+    font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 1.75rem 0 0.6rem;
+  }
+  p { margin: 0 0 1.1rem; }
+  a { color: var(--listen); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--talk); outline-offset: 2px; border-radius: 2px; }
+  strong { font-weight: 640; }
+  code, kbd {
+    font-family: var(--mono); font-size: 0.855em; background: var(--panel-2);
+    border: 1px solid var(--rule-soft); border-radius: 3px; padding: 0.05em 0.32em; word-break: break-word;
+  }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.35rem; }
+  li { margin-bottom: 0.5rem; }
+  li::marker { color: var(--muted); }
+
+  /* --- audience chips ---------------------------------------------- */
+  .aud {
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+    border: 1px solid var(--rule); border-radius: 999px; padding: 0.1em 0.6em; color: var(--muted);
+    vertical-align: 0.15em; white-space: nowrap; font-weight: 500;
+  }
+  .aud.op { border-color: var(--listen); color: var(--listen); }
+  .aud.eng { border-color: var(--talk); color: var(--talk); }
+
+  /* --- figures ----------------------------------------------------- */
+  figure {
+    margin: 2rem 0 2.25rem; background: var(--panel); border: 1px solid var(--rule);
+    border-radius: 4px; padding: clamp(1rem, 3vw, 1.75rem); overflow-x: auto;
+  }
+  figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  figure img { display: block; margin: 0 auto; max-width: 100%; height: auto; border-radius: 3px; }
+  figcaption {
+    font-family: var(--mono); font-size: 0.75rem; line-height: 1.55; color: var(--muted);
+    margin-top: 1.1rem; padding-top: 0.9rem; border-top: 1px solid var(--rule-soft);
+  }
+  figcaption b { color: var(--ink-2); font-weight: 500; }
+
+  /* SVG schematic conventions — identical vocabulary to the brief */
+  .s-box { fill: var(--panel-2); stroke: var(--rule); stroke-width: 1; }
+  .s-box-key { fill: none; stroke: var(--ink-2); stroke-width: 1.4; }
+  .s-box-cloud { fill: var(--panel); stroke: var(--listen); stroke-width: 1.3; }
+  .s-label { font-family: var(--mono); font-size: 11px; fill: var(--ink); }
+  .s-label-sm { font-family: var(--mono); font-size: 9.5px; fill: var(--muted); }
+  .s-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; fill: var(--muted); text-transform: uppercase; }
+  .s-wire { stroke: var(--ink-2); stroke-width: 1.3; fill: none; }
+  .s-talk { stroke: var(--talk); stroke-width: 1.8; fill: none; }
+  .s-listen { stroke: var(--listen); stroke-width: 1.8; fill: none; }
+  .s-prog { stroke: var(--prog); stroke-width: 1.6; fill: none; stroke-dasharray: 5 3; }
+  .s-fill-talk { fill: var(--talk); }
+  .s-fill-listen { fill: var(--listen); }
+  .s-fill-prog { fill: var(--prog); }
+  .s-bus { fill: var(--ink-2); }
+  .s-decide { fill: var(--panel); stroke: var(--talk); stroke-width: 1.3; }
+
+  /* --- tables ------------------------------------------------------ */
+  .tablewrap { overflow-x: auto; margin: 1.5rem 0 2rem; border: 1px solid var(--rule); border-radius: 4px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.62rem 0.85rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  thead th {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); font-weight: 500; background: var(--panel-2); border-bottom: 1px solid var(--rule); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.term { font-family: var(--mono); font-size: 0.82rem; white-space: nowrap; color: var(--ink); }
+
+  /* --- callouts ---------------------------------------------------- */
+  .note {
+    border-left: 3px solid var(--rule); background: var(--panel); padding: 1rem 1.1rem;
+    margin: 1.5rem 0; border-radius: 0 4px 4px 0; font-size: 0.94rem;
+  }
+  .note > :last-child { margin-bottom: 0; }
+  .note .tag {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+    display: block; margin-bottom: 0.4rem; color: var(--muted);
+  }
+  .note.warn { border-left-color: var(--alarm); }
+  .note.warn .tag { color: var(--alarm); }
+  .note.measured { border-left-color: var(--talk); }
+  .note.measured .tag { color: var(--talk); }
+  .note.op { border-left-color: var(--listen); }
+  .note.op .tag { color: var(--listen); }
+
+  /* --- key caps ---------------------------------------------------- */
+  .keyrow { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.25rem 0 1.75rem; }
+  .keycap {
+    width: 8.5rem; border: 1px solid var(--rule); border-radius: 4px; background: var(--panel);
+    overflow: hidden; font-family: var(--mono); font-size: 0.7rem;
+  }
+  .keycap .cap-name {
+    padding: 0.4rem 0.5rem 0.3rem; font-size: 0.72rem; letter-spacing: 0.04em; color: var(--ink);
+    border-bottom: 1px solid var(--rule-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .keycap .halves { display: grid; grid-template-columns: 1fr 1fr; }
+  .keycap .half { padding: 0.4rem 0.5rem; text-align: center; letter-spacing: 0.08em; color: var(--muted); font-size: 0.62rem; }
+  .keycap .half + .half { border-left: 1px solid var(--rule-soft); }
+  .keycap .half.talk-on { background: var(--talk); color: #1A1400; font-weight: 600; }
+  .keycap .half.listen-on { background: var(--listen); color: #04191C; font-weight: 600; }
+  .keycap .half.tally { box-shadow: inset 0 0 0 2px var(--talk); color: var(--talk); }
+  .keycap.dim { opacity: 0.55; }
+  .keycap .cap-badge { float: right; color: var(--alarm); font-size: 0.6rem; letter-spacing: 0.06em; }
+  .keycap .cap-badge.rec::before { content: "● "; }
+  .caplegend { font-family: var(--mono); font-size: 0.76rem; color: var(--muted); margin-top: -0.75rem; }
+
+  /* --- cost model -------------------------------------------------- */
+  .formula {
+    font-family: var(--mono); font-size: 0.85rem; line-height: 1.9; background: var(--panel);
+    border: 1px solid var(--rule); border-radius: 4px; padding: 1rem 1.1rem; margin: 1.5rem 0; overflow-x: auto;
+  }
+  .formula .lhs { color: var(--talk); }
+  .formula .cmt { color: var(--muted); }
+
+  /* --- measured bars ---------------------------------------------- */
+  .bars { margin: 1.5rem 0 2rem; display: grid; gap: 0.55rem; }
+  .bar {
+    display: grid; grid-template-columns: minmax(9rem, 15rem) 1fr minmax(5.5rem, auto);
+    gap: 0.75rem; align-items: center; font-family: var(--mono); font-size: 0.76rem;
+  }
+  .bar .lab { color: var(--ink-2); }
+  .bar .track { height: 0.85rem; background: var(--panel-2); border: 1px solid var(--rule-soft); border-radius: 2px; position: relative; overflow: hidden; }
+  .bar .fill { position: absolute; inset: 0 auto 0 0; background: var(--talk); }
+  .bar .fill.soft { background: var(--listen); }
+  .bar .fill.over { background: var(--alarm); }
+  .bar .val { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .bar-scale {
+    font-family: var(--mono); font-size: 0.7rem; color: var(--muted); display: flex; justify-content: space-between;
+    border-top: 1px solid var(--rule-soft); padding-top: 0.35rem; margin-top: 0.2rem;
+  }
+
+  /* --- wire block -------------------------------------------------- */
+  pre.wire {
+    font-family: var(--mono); font-size: 0.78rem; line-height: 1.6; background: var(--panel);
+    border: 1px solid var(--rule); border-radius: 4px; padding: 1rem 1.1rem; overflow-x: auto;
+    margin: 1.25rem 0 1.75rem; color: var(--ink-2);
+  }
+  pre.wire b { color: var(--talk); font-weight: 600; }
+  pre.wire i { color: var(--muted); font-style: normal; }
+
+  details {
+    border: 1px solid var(--rule); border-radius: 4px; background: var(--panel);
+    padding: 0.8rem 1rem; margin: 1.25rem 0;
+  }
+  summary { cursor: pointer; font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.06em; color: var(--ink-2); }
+  details[open] summary { margin-bottom: 0.9rem; }
+  details > :last-child { margin-bottom: 0; }
+
+  footer {
+    border-top: 1px solid var(--rule); margin-top: 2rem; padding: 2rem 0 4rem;
+    font-family: var(--mono); font-size: 0.76rem; color: var(--muted); line-height: 1.7;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .keycap .half { transition: background 120ms ease; }
+    html { scroll-behavior: smooth; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="masthead bleed">
+    <div style="max-width: var(--measure); margin: 0 auto;">
+      <p class="eyebrow">
+        <span>RemotePlayCore</span>
+        <span><b>Remote Talk</b></span>
+        <span>Epic RPC-126</span>
+        <span>Manual RPC-201</span>
+        <span>31 Jul 2026</span>
+      </p>
+      <h1>Remote Talk, in full</h1>
+      <p class="standfirst">
+        The complete operator-and-engineer manual for the browser intercom: the
+        signal path, the ten-millisecond mix matrix, the four channel kinds, the
+        panel plane, recording, and the federated fleet — with hand-drawn
+        schematics and every UI label quoted as it ships. Where a thing matters
+        only to whoever builds the plan, it is marked
+        <span class="aud eng">engineer</span>; where it is what an operator needs
+        at the desk, <span class="aud op">operator</span>.
+      </p>
+      <div class="sourcelist">
+        <span><b>Contract</b> &nbsp;docs/remote-talk.md (frozen §§1&ndash;14)</span>
+        <span><b>Listen model</b> &nbsp;docs/listen-semantics.md (F1&ndash;F18)</span>
+        <span><b>Engine</b> &nbsp;&nbsp;&nbsp;src/RemotePlayCore.Talk/TalkMixer.cs</span>
+        <span><b>Wiring</b> &nbsp;&nbsp;&nbsp;src/RemotePlayCore.Control/Talk*.cs, PortalEndpoints, FleetStatusEndpoints</span>
+        <span><b>UI strings</b> &nbsp;web/&hellip;/src/locales/en.json, quoted verbatim</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <h4>Contents</h4>
+    <ol>
+      <li><a href="#c01">The vocabulary</a></li>
+      <li><a href="#c02">One person, one connection</a></li>
+      <li><a href="#c03">The ten-millisecond matrix</a></li>
+      <li><a href="#c04">Mix-minus, worked through</a></li>
+      <li><a href="#c05">The four channel kinds</a></li>
+      <li><a href="#c06">Panels: keys, pages, templates</a></li>
+      <li><a href="#c07">Recording</a></li>
+      <li><a href="#c08">The fleet</a></li>
+      <li><a href="#c09">Admin how-tos</a></li>
+      <li><a href="#c10">Troubleshooting</a></li>
+    </ol>
+  </nav>
+
+  <!-- ============================================================ 01 -->
+  <section id="c01">
+    <h2><span class="num">01</span>The words the rest is built from</h2>
+    <p>
+      Remote Talk is a broadcast intercom, so it borrows its vocabulary from
+      Clear-Com and RTS rather than from telephony. Learn these terms in this
+      order and nothing later is surprising. The UI names are quoted exactly as
+      they appear.
+    </p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Term</th><th>What it is</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="term">Station</td>
+            <td>A named talk position — like a SIP account. Holds a display name, an allow-list of channels, an assigned set of users and groups, and a panel profile. Admin calls it a <strong>Station</strong> under <strong>Talk Plan &rsaquo; Stations</strong>.</td>
+            <td>A person logs <em>on to</em> a station; the station, not the person, is what the system routes. One station is live on <strong>one instance at a time</strong> — the portal (§08) enforces that across the fleet.</td>
+          </tr>
+          <tr>
+            <td class="term">Channel</td>
+            <td>A named audio bus, of one of four <strong>Kind</strong>s: <code>pl</code> (Party line), <code>group</code> (Group), <code>p2p</code> (P2P), <code>ifb</code> (IFB).</td>
+            <td>A channel is a <em>bus</em>, not a conference call. Mixing happens once per channel, whether one person hears it or four hundred do.</td>
+          </tr>
+          <tr>
+            <td class="term">Talk / Listen key</td>
+            <td>Two independent halves of one key on a panel, labelled <strong>Talk</strong> and <strong>Listen</strong>. Talk opens your mic into the channel; Listen subscribes you to its mix, with its own <strong>Listen level</strong>.</td>
+            <td>Separate on purpose — listening to six channels while talking on one is the normal case, not an edge case.</td>
+          </tr>
+          <tr>
+            <td class="term">Mix-minus</td>
+            <td>Your return feed is the channel mix <em>minus your own voice</em>.</td>
+            <td>Non-negotiable. Hearing yourself back over a network round trip makes a party line unusable within seconds.</td>
+          </tr>
+          <tr>
+            <td class="term">Tally</td>
+            <td>The lamp saying somebody is talking on a channel. The client shows <code>"{count} talking"</code>; your own open mic shows the <strong>MIC</strong> badge.</td>
+            <td>Tally follows <em>key position</em>, not gate state — a keyed-up desk saying nothing still lights it.</td>
+          </tr>
+          <tr>
+            <td class="term">Dim</td>
+            <td>The automatic drop in an IFB channel's program level while an interrupt talker is live. Admin sets the depth (<strong>Dim</strong> / <strong>Custom dim level</strong>, &minus;60&hellip;0&nbsp;dB).</td>
+            <td>Lets a producer cut over programme in the talent's ear without a fader.</td>
+          </tr>
+          <tr>
+            <td class="term">Home instance</td>
+            <td>The single server whose matrix mixes a given channel — <strong>Homed on</strong> in the channel editor: <em>This instance</em>, <em>Cloud</em>, or a named <em>Site</em>.</td>
+            <td>The whole multi-site story: audio is mixed in exactly one place; other sites exchange one feed with it.</td>
+          </tr>
+          <tr>
+            <td class="term">Pair line</td>
+            <td>A hidden private line the server materialises on demand for a <strong>station-key</strong> — a key that targets a <em>person</em> instead of a channel (<code>"Direct line to a person (station key)"</code>).</td>
+            <td>It is how "call Desk 2 directly" works without an admin drawing a p2p channel for every pair.</td>
+          </tr>
+          <tr>
+            <td class="term">Reply</td>
+            <td>A single key, labelled <strong>Reply</strong>, that dials back whoever last called you. Shows a <strong>Recent</strong> caller list.</td>
+            <td>Built on the station-key primitive — answer a call without hunting for the caller's tile.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note op">
+      <span class="tag">Operator, in one paragraph</span>
+      <p>
+        Pick a station, press <strong>Log on</strong>, allow the microphone. Each
+        key has a <strong>Talk</strong> half and a <strong>Listen</strong> half.
+        Hold Talk to speak; the lamp lights when anyone (including you) is
+        talking. You never hear yourself. Everything below this line is how it
+        works underneath — reach for it when something looks wrong, not before.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 02 -->
+  <section id="c02">
+    <h2><span class="num">02</span>One person, one connection</h2>
+    <p>
+      When somebody joins, exactly one WebSocket and one WebRTC peer connection
+      are created for their station, and both live as long as the logon does.
+      Every key press, every level, every tally travels on that pair. There is
+      no second track and no renegotiation once audio is up.
+    </p>
+
+    <figure class="bleed">
+      <svg viewBox="0 0 900 300" role="img" aria-labelledby="fig1title">
+        <title id="fig1title">Signal path from a browser mic through the server matrix and back to the same browser</title>
+        <text class="s-title" x="10" y="16">browser</text>
+        <text class="s-title" x="330" y="16">server — one instance</text>
+
+        <rect class="s-box" x="10" y="30" width="150" height="230" rx="3"/>
+        <text class="s-label" x="26" y="58">mic</text>
+        <text class="s-label-sm" x="26" y="74">getUserMedia</text>
+        <text class="s-label-sm" x="26" y="88">AEC · NS · AGC</text>
+        <text class="s-label" x="26" y="200">earpiece</text>
+        <text class="s-label-sm" x="26" y="216">one mono track</text>
+        <rect class="s-box-key" x="26" y="112" width="118" height="50" rx="3"/>
+        <text class="s-label-sm" x="34" y="130">panel keys</text>
+        <text class="s-label-sm" x="34" y="146">talk / listen / level</text>
+
+        <path class="s-talk" d="M160 66 H 300" marker-end="url(#ar-talk)"/>
+        <text class="s-label-sm" x="188" y="58">Opus uplink · WebRTC</text>
+        <path class="s-wire" d="M160 137 H 300" marker-end="url(#ar-wire)" stroke-dasharray="4 3"/>
+        <text class="s-label-sm" x="188" y="130">/ws/talk · JSON</text>
+        <path class="s-listen" d="M300 208 H 160" marker-end="url(#ar-listen)"/>
+        <text class="s-label-sm" x="186" y="200">personal mix · Opus</text>
+
+        <rect class="s-box" x="300" y="30" width="160" height="230" rx="3"/>
+        <text class="s-label" x="316" y="58">TalkSession</text>
+        <text class="s-label-sm" x="316" y="76">decode pump</text>
+        <text class="s-label-sm" x="316" y="90">(own task)</text>
+        <text class="s-label-sm" x="316" y="118">key/level frames</text>
+        <text class="s-label-sm" x="316" y="132">→ matrix config</text>
+        <text class="s-label-sm" x="316" y="200">SendMix → track</text>
+        <text class="s-label-sm" x="316" y="214">no copy, no queue</text>
+
+        <path class="s-talk" d="M460 66 H 560" marker-end="url(#ar-talk)"/>
+        <text class="s-label-sm" x="470" y="58">480 floats</text>
+        <rect class="s-box" x="560" y="42" width="90" height="46" rx="3"/>
+        <text class="s-label-sm" x="572" y="62">TalkInput</text>
+        <text class="s-label-sm" x="572" y="78">SPSC ring</text>
+
+        <rect class="s-box" x="560" y="110" width="320" height="120" rx="3"/>
+        <text class="s-label" x="576" y="134">TalkMixer — one thread, 10 ms grid</text>
+        <text class="s-label-sm" x="576" y="154">1 · gate every input</text>
+        <text class="s-label-sm" x="576" y="170">2 · sum talkers into each wanted bus</text>
+        <text class="s-label-sm" x="576" y="186">3 · encode each bus once → its sharers</text>
+        <text class="s-label-sm" x="576" y="202">4 · personal mix-minus for talkers</text>
+
+        <path class="s-talk" d="M605 88 V 110" marker-end="url(#ar-talk)"/>
+        <path class="s-listen" d="M700 230 V 250 H 380 V 230" marker-end="url(#ar-listen)"/>
+        <text class="s-label-sm" x="470" y="266">encoded packet, straight to the track</text>
+
+        <defs>
+          <marker id="ar-talk" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-fill-talk"/></marker>
+          <marker id="ar-listen" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-fill-listen"/></marker>
+          <marker id="ar-wire" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-bus"/></marker>
+        </defs>
+      </svg>
+      <figcaption>
+        <b>Amber</b> is mic audio going up, <b>teal</b> is the personal mix coming
+        back, <b>dashed grey</b> is signalling. The decode runs on the session's
+        own task, so a thousand uplinks decode across all cores; the mix and every
+        encode happen on <b>one</b> mixer thread. That asymmetry is the whole
+        scaling story (§03).
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/25-talk-view.png" alt="The in-console Talk view: a station picker, a logon bar, and a rack of split talk/listen keys.">
+      <figcaption>The in-console <b>Talk</b> view — station picker, <b>Log on</b> bar, and the key rack. The dedicated <code>/talk</code> client is the same intercom full-screen.</figcaption>
+    </figure>
+
+    <h4><span class="aud eng">Engineer</span> &nbsp; What logon actually does</h4>
+    <ol>
+      <li>Client opens <code>/ws/talk?access_token=&lt;jwt&gt;</code> and sends <code>{"type":"logon","stationId":"…"}</code>.</li>
+      <li>Server checks the station exists, is enabled, and admits this user — refusing with <code>station-in-use</code> (<code>"That station is already logged on elsewhere."</code>), <code>not-assigned</code> (<code>"Your account isn't assigned to that station."</code>), or <code>unknown-station</code>. A station assigned to nobody is open to any authenticated user.</li>
+      <li>It replies <code>logon-ok</code> with the station document <em>and its panel profile</em> — the exact key layout the panel draws, plus <code>maxMonitors</code>, <code>slotCount</code> and each key's <code>page</code>.</li>
+      <li>The client offers SDP; the server answers and trickles ICE. Media ports come from <code>Talk:MediaPortRange</code>, default <code>40000-40199</code>. On a cloud box behind 1:1 NAT, <code>Talk:PublicIp</code> adds one host candidate carrying the reachable address (§08).</li>
+      <li>The station registers with the matrix, which starts the mixer thread on the first logon. An instance nobody talks on never spins a 100&nbsp;Hz thread.</li>
+    </ol>
+
+    <h4>Who is allowed to log on</h4>
+    <p>
+      Station access is <strong>users &cup; groups</strong>. The editor states the
+      rule inline: <code>"Empty = any authenticated user may log on. Admins can
+      always log on regardless of this list."</code> and, for groups,
+      <code>"Members of any listed group may also log on — access is users plus
+      groups."</code> The summary line reads back one of three states:
+    </p>
+    <ul>
+      <li><code>"Open — any authenticated user may log on."</code> — no users, no groups.</li>
+      <li><code>"Restricted to the listed groups' members only (no individually assigned users)."</code></li>
+      <li><code>"Restricted to the listed users, plus any listed groups' members."</code></li>
+    </ul>
+    <p>
+      Assignment travels the fleet by <strong>username</strong> and
+      <strong>group name</strong>, never internal id — an unknown name is kept
+      inertly (granting nothing) and starts working the moment that account or
+      group is created on the instance.
+    </p>
+
+    <h4>The /ws/talk frames, once</h4>
+    <pre class="wire">→ <b>logon</b>      {"type":"logon","stationId":"…"}          <i>bind this socket to a station</i>
+← <b>logon-ok</b>   {"type":"logon-ok","station":{…},"profile":{…}}
+                                                     <i>+ maxMonitors, slotCount, keys[].page</i>
+← <b>logon-error</b> {"code":"station-in-use"|"not-assigned"|"unknown-station"
+                             |"already-logged-on"}    <i>last one: a 2nd station on one socket</i>
+⇄ <b>offer/answer/ice</b>                              <i>WebRTC, trickled both ways</i>
+→ <b>key</b>        {"type":"key","channelId":"…","talk":bool,"listen":bool,"latched":bool}
+→ <b>level</b>      {"type":"level","channelId":"…","gainDb":-∞..+6}   <i>≤ −120 = mute</i>
+→ <b>reset-listen</b> {"type":"reset-listen","channelId":"…"}         <i>back to the key default</i>
+← <b>state</b>      {"channels":[{id,talkers[],myTalk,myListen}],"talkerNames":{key→name}}
+→ <b>monitor</b>    {"type":"monitor","sourceKey":"…","on":bool,"duckDb":n,"duckBy":…}
+← <b>monitor-state</b> {"all":bool,"sources":[{key,on,gainDb,ok,reason,duckDb,ducked}]}
+← <b>config-changed</b>                                <i>re-fetch: client answers with a re-logon</i></pre>
+
+    <div class="note">
+      <span class="tag">Worth knowing</span>
+      <p>
+        Talk/listen keys are <strong>not</strong> acknowledged — the server
+        pushes a <code>state</code> frame carrying every channel's talkers and
+        your own position, so a panel renders from server truth rather than from
+        what it thinks it pressed. Monitoring an ordinary source <em>is</em>
+        acknowledged (<code>monitor-state</code> carries <code>ok</code> and a
+        <code>reason</code>), because a source key can fail to resolve and the
+        operator needs to be told why they hear nothing.
+      </p>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">One socket, one station</span>
+      <p>
+        A second <code>logon</code> for the <em>same</em> station on a socket that
+        already holds it is how a plan edit is picked up: the server re-issues
+        <code>logon-ok</code> → <code>monitor-state</code> (whole set) →
+        <code>state</code>. A <code>logon</code> for a <em>different</em> station
+        on a live socket is refused <code>already-logged-on</code>; the media leg,
+        matrix registration and claim are all bound to one identity. A client that
+        wants a second station opens a second socket.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 03 -->
+  <section id="c03">
+    <h2><span class="num">03</span>The matrix: four passes every 10&nbsp;ms</h2>
+    <p>
+      <span class="aud eng">Engineer</span>
+      The engine is a dedicated thread on a deadline grid ticking every 10&nbsp;ms
+      — 480 mono float32 samples at 48&nbsp;kHz — with no allocation once warm.
+      Each tick does four passes in this order, and the order is what keeps the
+      cost linear.
+    </p>
+
+    <ol>
+      <li><strong>Gate every input.</strong> One mean-square per input. Below the threshold (default &minus;50&nbsp;dBFS, 250&nbsp;ms hang) an input is invisible for the rest of the tick. <em>Silence is free</em> — 400 people with nobody talking cost 400 cheap arithmetic checks and nothing else.</li>
+      <li><strong>Sum talkers into each wanted bus.</strong> A bus nobody listens to and nothing bridges is not mixed at all. Each open mic is summed into each bus it has an open key on <em>exactly once</em>. Programme audio is summed <em>last</em>, so it can be ducked under live talkers.</li>
+      <li><strong>Encode each bus once.</strong> Everybody on a channel who is <em>not</em> talking into it receives a bit-identical feed — the plain bus mix — so it is encoded once and that single packet is handed to all of them. A ten-person party line with two talkers performs <strong>three</strong> encodes, not ten.</li>
+      <li><strong>Personal mix-minus for the rest.</strong> Only those who need a unique feed get their own encode: anyone with an open mic, listening to more than one channel, at a non-unity level, with a per-member duck configured, or monitoring a source.</li>
+    </ol>
+
+    <div class="formula">
+<span class="cmt">// per 10 ms tick, from TalkMixer.RunTick</span>
+<span class="lhs">crosspoint ops</span> = open-mic→bus sums + bus reads by listeners + mix-minus subtractions
+<span class="lhs">opus encodes </span> = buses that have sharers + members needing a personal feed
+<span class="cmt">// neither term contains members × talkers. That is the whole point.</span>
+    </div>
+
+    <p>
+      The regression test pins this exactly: grow a party line from 10 to 400
+      members with the same two open mics, and crosspoint ops come out at
+      <code>members + 4</code> every time while encodes stay at <strong>3</strong>.
+      Quadrupling the room quadruples the work; it does not multiply it by sixteen.
+      Both numbers are read straight off <strong>Talk Status</strong> — the
+      <strong>Crosspoint ops</strong> figure and the <strong>Encoders</strong>
+      line, which shows <code>"{shared} shared + {personal} personal"</code>.
+    </p>
+
+    <h4>What it costs at scale, measured</h4>
+    <p>
+      One Opus encode of one 10&nbsp;ms frame, at the settings we ship (32&nbsp;kbps,
+      complexity&nbsp;5, VBR, in-band FEC), costs about <strong>145&nbsp;microseconds</strong>
+      on a 22-core dev box. The tick budget is 10&nbsp;000&nbsp;µs and every encode
+      is on <strong>one thread</strong> — so an instance produces roughly
+      <strong>69 distinct feeds per tick</strong>, no more, whatever the core count.
+      The mix arithmetic is nowhere near the problem: a thousand people on one line
+      is under one percent of the budget.
+    </p>
+
+    <div class="bars">
+      <div class="bar"><span class="lab">mix only · 1000 on one line</span><span class="track"><span class="fill soft" style="width:0.7%"></span></span><span class="val">0.7%</span></div>
+      <div class="bar"><span class="lab">1000 on one line · 30 open mics</span><span class="track"><span class="fill" style="width:54.2%"></span></span><span class="val">54.2%</span></div>
+      <div class="bar"><span class="lab">1000 over 50 lines · 30 mics</span><span class="track"><span class="fill" style="width:71.2%"></span></span><span class="val">71.2%</span></div>
+      <div class="bar"><span class="lab">60 multi-key panels</span><span class="track"><span class="fill" style="width:79.8%"></span></span><span class="val">79.8%</span></div>
+      <div class="bar"><span class="lab">120 multi-key panels</span><span class="track"><span class="fill over" style="width:100%"></span></span><span class="val">135%</span></div>
+      <div class="bar-scale"><span>0</span><span>10 ms deadline</span></div>
+    </div>
+    <p class="caplegend">Fastest of five batches, Release build, 22-core box. Teal = mix arithmetic with no codec. Red = past the deadline — dropped ticks and audible breakup. 145&nbsp;µs/encode is <em>this</em> box's number; measure <code>tickP99Us</code> on the target hardware.</p>
+
+    <div class="note measured">
+      <span class="tag">The finding that governs sizing</span>
+      <p>
+        A panel with more than one listen key open <strong>cannot share an
+        encode</strong> — sharing needs a feed bit-identical to a bus mix (one
+        channel, unity level, own mic shut, no duck). Real operators listen to
+        several channels at once, so in realistic use the encode count tracks
+        <em>headcount</em>, and the ceiling is roughly <strong>50&ndash;70
+        stations per instance</strong>. Scale out by instance, not up: the fleet
+        (§08) is the answer, and one leg per channel is what makes it cheap.
+      </p>
+    </div>
+
+    <details>
+      <summary>What breaks first, in order</summary>
+      <ol>
+        <li><strong>Encodes per tick, one thread</strong> — ~69 feeds, so ~50&ndash;70 real panels. Watch <code>tickP99Us</code> and <code>missedDeadlines</code> in <code>GET /api/talk/status</code>, and the <strong>Encoders</strong> census beside them.</li>
+        <li><strong>Media ports</strong> — one UDP port per logged-on station from <code>Talk:MediaPortRange</code> (200 wide by default), so an instance stops near <strong>200 concurrent stations</strong> whatever the CPU says.</li>
+        <li><strong>Per-session WebRTC overhead</strong> — hundreds of DTLS/SRTP contexts and decode pumps in one process; proven at small scale, never load-tested.</li>
+      </ol>
+      <p>Two levers exist and are designed for: swap Concentus for a native libopus binding behind the <code>IOpusTalkEncoder</code> seam (roughly doubles the ceiling), and parallelise the two encode loops (embarrassingly parallel, serial today by choice).</p>
+    </details>
+  </section>
+
+  <!-- ============================================================ 04 -->
+  <section id="c04">
+    <h2><span class="num">04</span>Mix-minus, worked through</h2>
+    <p>
+      This is the part of an intercom that surprises people. Four stations on one
+      party line, two of them talking.
+    </p>
+
+    <figure class="bleed">
+      <svg viewBox="0 0 860 250" role="img" aria-labelledby="fig2title">
+        <title id="fig2title">Four stations on one party line, showing that each return feed excludes that station's own contribution</title>
+        <rect x="120" y="112" width="620" height="16" rx="3" class="s-box"/>
+        <text class="s-title" x="120" y="104">bus &ldquo;production&rdquo; — mixed once</text>
+        <text class="s-label-sm" x="748" y="124">A+B</text>
+
+        <g>
+          <rect class="s-box" x="120" y="30" width="120" height="54" rx="3"/>
+          <text class="s-label" x="132" y="50">Desk A</text><text class="s-label-sm" x="132" y="66">mic open</text>
+          <path class="s-talk" d="M180 84 V 112" marker-end="url(#ar2-talk)"/>
+          <rect class="s-box" x="120" y="160" width="120" height="52" rx="3"/>
+          <text class="s-label-sm" x="132" y="180">hears</text><text class="s-label" x="132" y="198">B</text>
+          <path class="s-listen" d="M180 128 V 160" marker-end="url(#ar2-listen)"/>
+        </g>
+        <g>
+          <rect class="s-box" x="280" y="30" width="120" height="54" rx="3"/>
+          <text class="s-label" x="292" y="50">Desk B</text><text class="s-label-sm" x="292" y="66">mic open</text>
+          <path class="s-talk" d="M340 84 V 112" marker-end="url(#ar2-talk)"/>
+          <rect class="s-box" x="280" y="160" width="120" height="52" rx="3"/>
+          <text class="s-label-sm" x="292" y="180">hears</text><text class="s-label" x="292" y="198">A</text>
+          <path class="s-listen" d="M340 128 V 160" marker-end="url(#ar2-listen)"/>
+        </g>
+        <g>
+          <rect class="s-box" x="440" y="30" width="120" height="54" rx="3"/>
+          <text class="s-label" x="452" y="50">Desk C</text><text class="s-label-sm" x="452" y="66">listening</text>
+          <rect class="s-box" x="440" y="160" width="120" height="52" rx="3"/>
+          <text class="s-label-sm" x="452" y="180">hears</text><text class="s-label" x="452" y="198">A+B</text>
+          <path class="s-listen" d="M500 128 V 160" marker-end="url(#ar2-listen)"/>
+        </g>
+        <g>
+          <rect class="s-box" x="600" y="30" width="120" height="54" rx="3"/>
+          <text class="s-label" x="612" y="50">Desk D</text><text class="s-label-sm" x="612" y="66">listening</text>
+          <rect class="s-box" x="600" y="160" width="120" height="52" rx="3"/>
+          <text class="s-label-sm" x="612" y="180">hears</text><text class="s-label" x="612" y="198">A+B</text>
+          <path class="s-listen" d="M660 128 V 160" marker-end="url(#ar2-listen)"/>
+        </g>
+        <text class="s-label-sm" x="120" y="238">2 encodes this tick: one shared A+B for C and D · one personal each for A and B</text>
+        <defs>
+          <marker id="ar2-talk" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-fill-talk"/></marker>
+          <marker id="ar2-listen" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-fill-listen"/></marker>
+        </defs>
+      </svg>
+      <figcaption>
+        C and D are not talking, so their feed <b>is</b> the bus mix — one encode
+        serves both, and it would serve four hundred. A and B each need the mix
+        with their own voice removed, so each gets a personal encode. Encodes track
+        <b>open mics</b>, not headcount.
+      </figcaption>
+    </figure>
+
+    <p>
+      The subtraction is one pass, not per crosspoint. When the plan compiles,
+      each station's own contribution is pre-totalled across every bus it both
+      talks on and listens to, at that bus's listen level. At tick time that is a
+      single scaled subtract of the exact frame that went up.
+    </p>
+
+    <div class="note warn">
+      <span class="tag">The support call this generates</span>
+      <p>
+        <strong>Someone alone on a channel hears nothing at all, by design.</strong>
+        Their own voice is the only thing on the bus, and mix-minus removes it.
+        Combined with the noise gate — which stays shut on a silent or
+        badly-configured mic — this is exactly what a first-time user reports as
+        &ldquo;it's broken&rdquo;. A mic capturing &minus;90&nbsp;dBFS of nothing
+        looks identical to a working intercom with nobody on the other end. Confirm
+        it from the <strong>Uplink</strong> meter in <strong>Talk Status</strong>,
+        not from what the operator can hear — §10 has the full script.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 05 -->
+  <section id="c05">
+    <h2><span class="num">05</span>The four channel kinds</h2>
+    <p>
+      All four are the same bus with different rules about who may key up and who
+      may listen. Nothing about the mixing changes.
+    </p>
+
+    <figure class="bleed">
+      <svg viewBox="0 0 880 210" role="img" aria-labelledby="fig3title">
+        <title id="fig3title">Topologies of the four channel kinds: party line, group, point to point, and IFB</title>
+        <text class="s-title" x="10" y="18">pl — party line</text>
+        <g>
+          <rect x="10" y="96" width="180" height="12" rx="3" class="s-box"/>
+          <circle cx="40" cy="52" r="13" class="s-box"/><path class="s-talk" d="M40 65 V 96"/><path class="s-listen" d="M52 96 V 68"/>
+          <circle cx="100" cy="52" r="13" class="s-box"/><path class="s-talk" d="M100 65 V 96"/><path class="s-listen" d="M112 96 V 68"/>
+          <circle cx="160" cy="52" r="13" class="s-box"/><path class="s-talk" d="M160 65 V 96"/><path class="s-listen" d="M172 96 V 68"/>
+          <text class="s-label-sm" x="10" y="132">everyone talks,</text><text class="s-label-sm" x="10" y="146">everyone listens</text>
+          <text class="s-label-sm" x="10" y="172">production talkback,</text><text class="s-label-sm" x="10" y="186">crew line</text>
+        </g>
+        <text class="s-title" x="230" y="18">group</text>
+        <g>
+          <rect x="230" y="96" width="180" height="12" rx="3" class="s-box"/>
+          <circle cx="260" cy="52" r="13" class="s-fill-talk" opacity="0.85"/><path class="s-talk" d="M260 65 V 96"/>
+          <circle cx="320" cy="52" r="13" class="s-box"/><circle cx="380" cy="52" r="13" class="s-box"/>
+          <path class="s-listen" d="M320 96 V 68"/><path class="s-listen" d="M380 96 V 68"/>
+          <text class="s-label-sm" x="230" y="132">named talkers only,</text><text class="s-label-sm" x="230" y="146">open listening</text>
+          <text class="s-label-sm" x="230" y="172">announcements,</text><text class="s-label-sm" x="230" y="186">director to floor</text>
+        </g>
+        <text class="s-title" x="450" y="18">p2p — private line</text>
+        <g>
+          <rect x="450" y="96" width="180" height="12" rx="3" class="s-box"/>
+          <circle cx="490" cy="52" r="13" class="s-box"/><path class="s-talk" d="M490 65 V 96"/><path class="s-listen" d="M502 96 V 68"/>
+          <circle cx="590" cy="52" r="13" class="s-box"/><path class="s-talk" d="M590 65 V 96"/><path class="s-listen" d="M602 96 V 68"/>
+          <text class="s-label-sm" x="450" y="132">exactly two members,</text><text class="s-label-sm" x="450" y="146">nobody else carries a key</text>
+          <text class="s-label-sm" x="450" y="172">a quiet word without</text><text class="s-label-sm" x="450" y="186">the whole line hearing</text>
+        </g>
+        <text class="s-title" x="670" y="18">ifb — interrupt</text>
+        <g>
+          <rect x="670" y="96" width="180" height="12" rx="3" class="s-box"/>
+          <path class="s-prog" d="M670 76 H 850"/><text class="s-label-sm" x="672" y="70">programme feed</text>
+          <circle cx="700" cy="40" r="11" class="s-fill-talk" opacity="0.85"/><path class="s-talk" d="M700 51 V 96"/>
+          <circle cx="810" cy="140" r="11" class="s-box"/><path class="s-listen" d="M810 108 V 129"/>
+          <text class="s-label-sm" x="670" y="176">talk ducks programme</text><text class="s-label-sm" x="670" y="190">by DimDb, in the ear</text>
+        </g>
+      </svg>
+      <figcaption>
+        Amber = a mic that may open; teal = a listen path; dashed slate = the
+        programme feed an IFB interrupts. The bus itself is identical in all four —
+        only the permission rules and the programme tap differ.
+      </figcaption>
+    </figure>
+
+    <h4>The permission rule, exactly as the code has it</h4>
+    <p>
+      Two lines decide whether an operator has a key at all:
+      <code>canTalk = named-talker OR (pl AND no named talkers)</code>, and
+      <code>canListen = ListenerOpen OR canTalk</code>. A key exists only if the
+      channel is on the station's allow-list. One consequence to state plainly:
+      <strong>there is no talk-only key</strong> — if you may speak on a channel,
+      you may hear it.
+    </p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Kind</th><th>May key up</th><th>May listen</th><th>Typical use</th></tr></thead>
+        <tbody>
+          <tr><td class="term">pl</td><td>Everyone on the allow-list — <em>unless</em> the channel names talkers, then only those.</td><td>Everyone, if <strong>Listener open</strong>; else talkers only.</td><td>Crew line, production talkback.</td></tr>
+          <tr><td class="term">group</td><td>Only stations in <strong>Talker stations</strong>.</td><td>Everyone, if <strong>Listener open</strong> (the default).</td><td>One-to-many announcement.</td></tr>
+          <tr><td class="term">p2p</td><td>Only the two named stations (<code>"A P2P channel needs EXACTLY two talker stations."</code>).</td><td>The same two.</td><td>Private line.</td></tr>
+          <tr><td class="term">ifb</td><td>Only named stations (the interrupters).</td><td>Whoever carries a listen key — the talent.</td><td>Interrupt feed with programme dim.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">Two defaults that bite in the field</span>
+      <p>
+        A brand-new <strong>IFB</strong> defaults to <em>Listener open = off</em>,
+        which means the only stations with a key are the interrupters — the
+        <em>talent</em>, the whole reason the channel exists, hears nothing. Turn
+        <strong>Listener open</strong> on for the talent's side. And a
+        <strong>p2p</strong> line with <em>Listener open</em> switched on is no
+        longer private: any allow-listed third station gets a listen key. Leave it
+        off on a private line.
+      </p>
+    </div>
+
+    <figure>
+      <img src="img/34-channel-editor.png" alt="The channel editor for an IFB channel: Kind, Talker stations, Listener open, Program source picker, and the Custom dim level slider.">
+      <figcaption>The <b>channel editor</b> for an IFB: <b>Program source</b> (<code>"a talk station/channel can't be used as the program source"</code>) and <b>Custom dim level</b> — <code>"How far the program is ducked while an interrupt talker is active."</code></figcaption>
+    </figure>
+
+    <details>
+      <summary><span class="aud eng">Engineer</span> &nbsp; dim, and where it surprises</summary>
+      <p>
+        Dim follows the <em>energy gate</em>, not the key — programme un-dims
+        250&nbsp;ms after a talker falls below &minus;50&nbsp;dBFS, so it lifts
+        under natural pauses and ducks for headphone bleed, unlike a hardware IFB
+        that dims on key-down. The dim is applied at the bus <em>before</em>
+        mix-minus, so the interrupter's own programme reference is ducked by their
+        own talking. And <code>DimDb</code> left null is unity — an IFB created
+        with the dim control <em>off</em> does not duck at all; it uses the
+        engine default only when you leave <strong>Custom dim level</strong> off
+        but the channel still carries a default. Set a deliberate depth for
+        anything that matters.
+      </p>
+    </details>
+  </section>
+
+  <!-- ============================================================ 06 -->
+  <section id="c06">
+    <h2><span class="num">06</span>Panels: keys, pages, templates</h2>
+    <p>
+      A panel profile is a named set of keys, shared across stations. Building one
+      does <strong>not</strong> build a bus — buses come from channels; a key is a
+      view onto a channel (or a person) that already exists. Get that the right way
+      round and most of what looks surprising when an admin edits a live system
+      explains itself.
+    </p>
+
+    <h4>What a profile renders as</h4>
+    <div class="keyrow">
+      <div class="keycap"><div class="cap-name">PRODUCTION</div><div class="halves"><div class="half talk-on">TALK</div><div class="half listen-on">LISTEN</div></div></div>
+      <div class="keycap"><div class="cap-name">DIRECTOR</div><div class="halves"><div class="half tally">TALK</div><div class="half listen-on">LISTEN</div></div></div>
+      <div class="keycap"><div class="cap-name">DESK 2 <span class="cap-badge">↔</span></div><div class="halves"><div class="half">TALK</div><div class="half listen-on">LISTEN</div></div></div>
+      <div class="keycap"><div class="cap-name">STUDIO IFB <span class="cap-badge rec">REC</span></div><div class="halves"><div class="half">TALK</div><div class="half listen-on">LISTEN</div></div></div>
+      <div class="keycap dim"><div class="cap-name">STUDIO 2 PL</div><div class="halves"><div class="half">TALK</div><div class="half">LISTEN</div></div></div>
+    </div>
+    <p class="caplegend">Filled amber = your mic is open. Amber outline = tally, somebody else is talking. Filled teal = you are listening. <b>↔</b> = a station-key (direct line to a person). <b>● REC</b> = the channel is being recorded. Dimmed = present but idle.</p>
+
+    <h3>Station keys, shared panels, and Reply</h3>
+    <p>
+      A key may target a <strong>person</strong> instead of a channel — a
+      <em>station-key</em>, shown with the tooltip <code>"Direct line to a person
+      (station key)"</code>. It needs no pre-authored channel: the server
+      materialises a hidden private line for the pair on demand, with a stable id
+      <code>pair:&lt;loId&gt;:&lt;hiId&gt;</code>, and reaps it when the last end
+      logs off. The pair never appears in the plan, in RTAP, or in a non-member's
+      <code>state</code> frame — a private line stays private, structurally.
+    </p>
+
+    <figure class="bleed">
+      <svg viewBox="0 0 880 240" role="img" aria-labelledby="figSKtitle">
+        <title id="figSKtitle">A shared self-excluding panel: each member gets a station-key to every other member, its own key hidden</title>
+        <text class="s-title" x="20" y="18">one shared panel, drawn per viewer</text>
+
+        <!-- the profile -->
+        <rect class="s-box" x="20" y="34" width="200" height="150" rx="3"/>
+        <text class="s-label" x="34" y="56">Studio Crew Panel</text>
+        <text class="s-label-sm" x="34" y="74">station-keys →</text>
+        <text class="s-label-sm" x="34" y="92">· Desk 1</text>
+        <text class="s-label-sm" x="34" y="108">· Desk 2</text>
+        <text class="s-label-sm" x="34" y="124">· Desk 3</text>
+        <text class="s-label-sm" x="34" y="150">+ Crew PL (channel)</text>
+        <text class="s-label-sm" x="34" y="168">one profile, all members</text>
+
+        <path class="s-wire" d="M220 110 H 300" marker-end="url(#arSK)"/>
+
+        <!-- three rendered panels -->
+        <g>
+          <rect class="s-box-key" x="310" y="40" width="150" height="150" rx="3"/>
+          <text class="s-title" x="322" y="60">Desk 1 sees</text>
+          <text class="s-label-sm" x="322" y="86">— (own key hidden)</text>
+          <text class="s-label-sm" x="322" y="104">→ Desk 2</text>
+          <text class="s-label-sm" x="322" y="120">→ Desk 3</text>
+          <text class="s-label-sm" x="322" y="146">Crew PL</text>
+          <text class="s-label-sm" x="322" y="172">+ Reply</text>
+        </g>
+        <g>
+          <rect class="s-box-key" x="480" y="40" width="150" height="150" rx="3"/>
+          <text class="s-title" x="492" y="60">Desk 2 sees</text>
+          <text class="s-label-sm" x="492" y="86">→ Desk 1</text>
+          <text class="s-label-sm" x="492" y="104">— (own key hidden)</text>
+          <text class="s-label-sm" x="492" y="120">→ Desk 3</text>
+          <text class="s-label-sm" x="492" y="146">Crew PL</text>
+          <text class="s-label-sm" x="492" y="172">+ Reply</text>
+        </g>
+        <g>
+          <rect class="s-box-key" x="650" y="40" width="150" height="150" rx="3"/>
+          <text class="s-title" x="662" y="60">Desk 3 sees</text>
+          <text class="s-label-sm" x="662" y="86">→ Desk 1</text>
+          <text class="s-label-sm" x="662" y="104">→ Desk 2</text>
+          <text class="s-label-sm" x="662" y="120">— (own key hidden)</text>
+          <text class="s-label-sm" x="662" y="146">Crew PL</text>
+          <text class="s-label-sm" x="662" y="172">+ Reply</text>
+        </g>
+        <text class="s-label-sm" x="310" y="216">slotCount in logon-ok tells the client the trailing slot even when the hidden key was the highest one</text>
+        <defs>
+          <marker id="arSK" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-bus"/></marker>
+        </defs>
+      </svg>
+      <figcaption>
+        One profile, materialised per member. Each viewer's own station-key is
+        <b>self-excluded</b> — a private line to yourself is nonsensical, so the
+        slot simply isn't rendered. The <b>Panel Builder</b> composes exactly this
+        in one action, and <b>Reply</b> dials whoever last called.
+      </figcaption>
+    </figure>
+
+    <p>
+      The <strong>Reply</strong> key (<code>talk.reply.label = "Reply"</code>)
+      answers the last caller without hunting for a tile: it shows a
+      <strong>Recent</strong> caller list, resolving the caller's display name from
+      the <code>state</code> frame's <code>talkerNames</code> map, and falling back
+      to <code>"Station {id}"</code> when a name isn't known (a federated far end).
+    </p>
+
+    <h3>Per-key appearance and behaviour</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Field</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td class="term">label</td><td>A custom key label; empty falls back to the channel or target name. Capped at 64.</td></tr>
+          <tr><td class="term">noLatch</td><td><strong>Forbid latch</strong> — momentary only, for discipline-critical channels. The client shows <code>"Momentary only — this key can't be latched. Hold to talk."</code> A <code>latching</code>+<code>noLatch</code> combination is refused at save.</td></tr>
+          <tr><td class="term">defaultListenGainDb</td><td>The key's default listen level, applied at logon before any personalization. Null = unity; a stored &minus;120 is mute-by-default.</td></tr>
+          <tr><td class="term">talkMode</td><td><strong>Momentary</strong> / <strong>Latching</strong> / <strong>Both</strong> — the last splits by hold-vs-tap. On mobile a latch is a <em>double</em>-tap, deliberately: a pocket tap that latches your mic open into a live line is the worst failure mode this product has.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Operator listen levels and toggles are <strong>persisted per (user,
+      station)</strong> and survive a reconnect — the precedence is key default
+      &lt; saved personal pref &lt; live in-session change. <strong>Reset to
+      default</strong> (<code>reset-listen</code>) clears the personal pref and
+      snaps the key back to its authored default. Personalization is listen-only;
+      it never touches talk rights or key layout, which are the admin's.
+    </p>
+
+    <h3>Paged surfaces and versioned templates</h3>
+    <p>
+      A profile carrying more keys than one rack page shows uses <strong>Page</strong>
+      (<code>0..32</code>) to group slots — <code>"slot numbering restarts on each
+      page."</code> The client renders a page selector (<code>"Page {n}"</code>).
+    </p>
+    <p>
+      A profile is a <strong>versioned template</strong>. An edit is a
+      <strong>Draft</strong> until <strong>Publish</strong>; only published
+      versions distribute to the fleet. The rule the UI states:
+      <code>"Edits here are a draft until published — stations on this instance see
+      the draft immediately, but the rest of the fleet only ever receives the last
+      published version."</code> <strong>Version history</strong> lists every
+      publish; <strong>Roll back</strong> re-publishes an earlier snapshot as a
+      <em>new</em> version — <code>"nothing is deleted from the history."</code>
+    </p>
+
+    <figure>
+      <img src="img/29-panel-builder.png" alt="The Panel Builder: a member picker with a chosen order, optional shared channels, a Preview as picker, and a Build button.">
+      <figcaption>The <b>Panel Builder</b> — <code>"Build one shared panel for a group of people and assign it to all of them in one action."</code> <b>Preview as</b> shows each member's self-excluded view before you commit.</figcaption>
+    </figure>
+
+    <h3>Monitoring a source, and the personal IFB duck</h3>
+    <p>
+      A station can hear an ordinary Remote Play source — a Livewire feed, an AES67
+      stream — <strong>through the connection it already has</strong>. No second
+      track: the source is summed into the personal mix on a hidden bus. The cap is
+      <code>Talk:MaxMonitorsPerStation</code> (default 4, ceiling 32, 0 disables),
+      reported to the client as <code>maxMonitors</code>. Monitors are session
+      state — released on logoff, on a dropped socket, and on <em>any</em> plan
+      change.
+    </p>
+    <p>
+      A monitor can be turned into a <strong>personal IFB</strong> with
+      <strong>Duck</strong>: <code>"Personal-IFB duck: dips {db} dB while a talker
+      is live on the armed channel(s)"</code>. <strong>Counts as an
+      interruption</strong> is either <code>"Any channel this station listens
+      to"</code> or <code>"Only these channels"</code>. It gets programme out of the
+      way of intercom without touching a fader — and <strong>Talk Status</strong>
+      shows the live trigger as <strong>Ducked now</strong>.
+    </p>
+
+    <div class="note warn">
+      <span class="tag">The subtlety to write down before it bites</span>
+      <p>
+        Memberships follow the station's <strong>allow-list</strong>, not its panel
+        profile. Removing a tile hides the key but leaves the matrix membership
+        sitting idle — harmless, but it is <em>not</em> how you take someone off a
+        channel. For that, remove the channel from the station's allow-list, or
+        delete the channel. And a plan edit pushes <code>config-changed</code> to
+        every live session, which <strong>releases every monitored source</strong>
+        — so an admin tidying a channel name quietly drops everyone's monitoring.
+        Talk and listen keys are unaffected.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 07 -->
+  <section id="c07">
+    <h2><span class="num">07</span>Recording</h2>
+    <p>
+      Any channel's bus mix can be recorded at the instance that <strong>homes</strong>
+      it, so a cross-site channel is recorded exactly once, at home, not per member
+      site. Recording is its own licence feature (<strong>Channel recording</strong>)
+      — an instance can run intercom without it, and every recordings endpoint 403s
+      when it is idle.
+    </p>
+
+    <figure class="bleed">
+      <svg viewBox="0 0 900 320" role="img" aria-labelledby="fig7title">
+        <title id="fig7title">The recording data path: bus mix tapped, encoded to Ogg/Opus segments with a JSON sidecar, written to local disk, mirrored to S3, and swept by retention with legal-hold exemption</title>
+
+        <!-- bus -->
+        <rect x="20" y="60" width="150" height="14" rx="3" class="s-box"/>
+        <text class="s-title" x="20" y="52">channel bus mix</text>
+        <text class="s-label-sm" x="20" y="94">mono 48 kHz, at home</text>
+
+        <!-- gate: mode -->
+        <path class="s-wire" d="M170 67 H 236" marker-end="url(#ar7-w)"/>
+        <rect class="s-decide" x="240" y="40" width="150" height="54" rx="3"/>
+        <text class="s-label" x="254" y="62">ShouldRecord?</text>
+        <text class="s-label-sm" x="254" y="80">always · off · on-demand+armed</text>
+
+        <!-- record tap -->
+        <path class="s-wire" d="M390 67 H 456" marker-end="url(#ar7-w)"/>
+        <rect class="s-box" x="460" y="40" width="170" height="80" rx="3"/>
+        <text class="s-label" x="474" y="62">record tap</text>
+        <text class="s-label-sm" x="474" y="80">Ogg/Opus, DTX-off</text>
+        <text class="s-label-sm" x="474" y="96">+ JSON sidecar timeline</text>
+        <text class="s-label-sm" x="474" y="112">(who spoke, when)</text>
+
+        <!-- local disk -->
+        <path class="s-wire" d="M545 120 V 156" marker-end="url(#ar7-w)"/>
+        <rect class="s-box" x="460" y="160" width="170" height="70" rx="3"/>
+        <text class="s-label" x="474" y="184">local disk</text>
+        <text class="s-label-sm" x="474" y="202">DataDir/recordings/</text>
+        <text class="s-label-sm" x="474" y="218">&lt;channelId&gt;/&lt;utc&gt;.opus</text>
+
+        <!-- S3 queue -->
+        <path class="s-wire" d="M630 195 H 690" marker-end="url(#ar7-w)"/>
+        <rect class="s-box-cloud" x="694" y="160" width="180" height="70" rx="3"/>
+        <text class="s-label" x="708" y="184">S3 upload queue</text>
+        <text class="s-label-sm" x="708" y="202">instance-role creds</text>
+        <text class="s-label-sm" x="708" y="218">retry · never blocks · no secret</text>
+        <text class="s-label-sm" x="694" y="248">local copy kept unless DeleteLocalAfterUpload</text>
+
+        <!-- retention sweep -->
+        <path class="s-wire" d="M545 230 V 266" marker-end="url(#ar7-w)"/>
+        <rect class="s-decide" x="400" y="270" width="270" height="40" rx="3"/>
+        <text class="s-label" x="414" y="294">retention sweep — except on legal hold</text>
+
+        <!-- download -->
+        <path class="s-listen" d="M460 195 H 300 V 240" marker-end="url(#ar7-l)"/>
+        <rect class="s-box" x="220" y="244" width="180" height="60" rx="3"/>
+        <text class="s-label" x="234" y="266">download / play</text>
+        <text class="s-label-sm" x="234" y="284">admin bearer OR</text>
+        <text class="s-label-sm" x="234" y="298">scoped ticket ?access_token=</text>
+
+        <defs>
+          <marker id="ar7-w" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-bus"/></marker>
+          <marker id="ar7-l" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-fill-listen"/></marker>
+        </defs>
+      </svg>
+      <figcaption>
+        The bus mix is tapped only when the channel's <b>mode</b> says so, encoded
+        to real Ogg/Opus with a per-segment JSON <b>sidecar</b> of talker on/off
+        events, written to <b>local disk first</b>, then mirrored to <b>S3</b> off
+        the recorder path on a retrying queue that never blocks recording and never
+        deletes the local copy on failure. Retention sweeps local segments; a
+        <b>legal hold</b> is exempt.
+      </figcaption>
+    </figure>
+
+    <h4>The three modes</h4>
+    <p>
+      <strong>Recording</strong> in the channel editor is
+      <code>"Off — never recorded"</code>, <code>"Always"</code>, or
+      <code>"On-demand"</code>. The hint is exact:
+      <code>"Recorded at whichever instance homes this channel. Requires the
+      Recording licence feature. \"Off\" never records; \"Always\" records
+      continuously; \"On-demand\" records only while an operator arms it from the
+      channel list below (session state — not saved with the plan, and cleared on
+      restart)."</code> On-demand arming is <strong>Arm</strong> /
+      <strong>Disarm</strong> per channel; the badge <code>"On-demand"</code>
+      (<code>"Records only while armed — currently disarmed"</code>) flips to the
+      red <strong>REC</strong> badge when live.
+    </p>
+
+    <div class="note warn">
+      <span class="tag">Privacy is a requirement, not an option</span>
+      <p>
+        A recorded channel raises <code>recording: true</code> in the
+        <code>logon-ok</code> profile keys <em>and</em> in every <code>state</code>
+        frame, so a member panel shows <code>"This channel is being recorded"</code>
+        the moment it logs on. And a <strong>p2p</strong> line is refused recording
+        unless the instance sets <code>Talk:Recording:AllowPrivateRecording=true</code>
+        <em>and</em> the channel is <code>Always</code> — an ambiguous on-demand
+        private recording is never permitted, enforced at the admin surface and in
+        the recorder both (<code>"A private (P2P) channel may only be recorded with
+        \"Always\" — \"On-demand\" is never permitted for a private line."</code>).
+      </p>
+    </div>
+
+    <h4>Storage, retention, and legal hold</h4>
+    <ul>
+      <li><strong>Local disk always</strong>: <code>DataDir/recordings/&lt;channelId&gt;/&lt;utc&gt;.opus</code>, rotated by <code>Talk:Recording:SegmentSeconds</code> (default 300) and closed after a <code>GapCloseSeconds</code> silence. Each segment carries a JSON sidecar timeline of talker events.</li>
+      <li><strong>S3 mirror</strong> when <code>Talk:Recording:S3:Bucket</code> is set — via the <strong>AWS default credential chain</strong> (the EC2 instance role on the fleet), so no access key is ever stored. Uploads run on a background queue with retry; a failure is counted in Talk Status <code>uploadFaults</code> and never deletes the local copy.</li>
+      <li><strong>Retention</strong>: <code>Talk:Recording:RetentionDays</code> (0 = keep forever) sweeps <em>local</em> segments; <strong>legal hold</strong> (<strong>Place hold</strong> / <strong>Release hold</strong>) is exempt, and a held recording refuses deletion (<code>"On legal hold — release the hold before deleting."</code>). S3 retention is a bucket lifecycle policy, not the app's job.</li>
+      <li><strong>Download auth</strong>: an admin bearer, or a short-lived scoped <em>ticket</em> lifted from <code>?access_token=</code> so a browser <code>&lt;audio&gt;</code>/download link works. The ticket is scoped (not single-use) on purpose — a seeking audio element issues many range requests.</li>
+    </ul>
+
+    <figure>
+      <img src="img/30-recordings.png" alt="The Recordings page: a filterable table of recordings by channel and date with play, timeline, legal-hold and delete controls.">
+      <figcaption>The <b>Recordings</b> page — filter by <b>Channel</b> and date, <b>Play</b> inline, open the <b>Timeline</b> sidecar, and place a <b>Legal hold</b>. The recorder's own health sits under <b>Talk Status &rsaquo; Recorder</b> (next figure).</figcaption>
+    </figure>
+
+    <figure>
+      <img src="img/33-talk-status-recorder.png" alt="The Recorder card in Talk Status: licensed state, channels recording now, segments, faults, upload faults, and armed on-demand channels.">
+      <figcaption>The <b>Recorder</b> card in Talk Status: <b>Recording now</b>, <b>Segments</b>, <b>Faults</b>, <b>Upload faults</b>, and <b>Armed (on-demand)</b> / <b>None armed</b>.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============================================================ 08 -->
+  <section id="c08">
+    <h2><span class="num">08</span>The fleet</h2>
+    <p>
+      Two rules carry the whole distributed design: <strong>a channel is mixed on
+      exactly one instance</strong>, and <strong>sites exchange one audio leg per
+      channel, never one per person</strong>. Everything below — homing, the
+      config authority, the portal, SSO — is built on those two.
+    </p>
+
+    <figure class="bleed">
+      <svg viewBox="0 0 900 430" role="img" aria-labelledby="fig8title">
+        <title id="fig8title">A three-instance fleet: a cloud config authority, and London and Sydney on-prem sites; London homes and mixes its own channel locally, Sydney legs to shared channels</title>
+
+        <text class="s-title" x="20" y="18">control plane — the plan &amp; presence, pulled every federation poll</text>
+        <rect class="s-box-cloud" x="330" y="30" width="240" height="72" rx="3"/>
+        <text class="s-label" x="346" y="52">cloud — config authority</text>
+        <text class="s-label-sm" x="346" y="70">owns the plan · SSO pool · portal</text>
+        <text class="s-label-sm" x="346" y="86">homes fleet-wide channels</text>
+
+        <path class="s-wire" d="M330 66 C 220 66, 150 120, 150 176" stroke-dasharray="4 3" marker-end="url(#ar8-w)"/>
+        <path class="s-wire" d="M570 66 C 700 66, 760 120, 760 176" stroke-dasharray="4 3" marker-end="url(#ar8-w)"/>
+        <text class="s-label-sm" x="150" y="150">bundle + RTAP + health</text>
+        <text class="s-label-sm" x="620" y="150">bundle + RTAP + health</text>
+
+        <!-- London -->
+        <rect class="s-box" x="40" y="180" width="300" height="220" rx="3"/>
+        <text class="s-title" x="56" y="202">on-prem · London — subscriber</text>
+        <rect x="56" y="222" width="270" height="12" rx="3" class="s-box"/>
+        <text class="s-label-sm" x="56" y="216">&ldquo;London crew&rdquo; — homed on London</text>
+        <circle cx="80" cy="266" r="11" class="s-box"/><circle cx="120" cy="266" r="11" class="s-box"/><circle cx="160" cy="266" r="11" class="s-box"/>
+        <path class="s-talk" d="M80 255 V 234"/><path class="s-listen" d="M120 234 V 255"/><path class="s-listen" d="M160 234 V 255"/>
+        <text class="s-label-sm" x="56" y="300">two London desks mix IN London —</text>
+        <text class="s-label-sm" x="56" y="316">a purely local path, zero legs</text>
+        <rect x="56" y="340" width="270" height="10" rx="3" class="s-box"/>
+        <text class="s-label-sm" x="56" y="336">&ldquo;All-call&rdquo; — homed on cloud</text>
+        <text class="s-label-sm" x="56" y="372">cross-site members leg to the cloud →</text>
+
+        <!-- Sydney -->
+        <rect class="s-box" x="560" y="180" width="300" height="220" rx="3"/>
+        <text class="s-title" x="576" y="202">on-prem · Sydney — subscriber</text>
+        <rect x="576" y="340" width="270" height="10" rx="3" class="s-box"/>
+        <text class="s-label-sm" x="576" y="336">&ldquo;All-call&rdquo; — same shared bus</text>
+        <circle cx="600" cy="300" r="11" class="s-box"/><circle cx="640" cy="300" r="11" class="s-box"/>
+        <path class="s-talk" d="M600 289 V 350"/><path class="s-listen" d="M640 350 V 289"/>
+        <text class="s-label-sm" x="576" y="372">one leg carries Sydney up, the mix back</text>
+
+        <!-- legs to cloud -->
+        <path class="s-talk" d="M300 340 C 300 150, 400 130, 448 102" marker-end="url(#ar8-t)"/>
+        <path class="s-listen" d="M452 102 C 360 140, 320 180, 300 348" marker-end="url(#ar8-l)"/>
+        <path class="s-talk" d="M600 340 C 600 150, 500 130, 452 102" marker-end="url(#ar8-t)"/>
+        <path class="s-listen" d="M448 102 C 540 140, 580 180, 600 348" marker-end="url(#ar8-l)"/>
+        <text class="s-label-sm" x="386" y="126">one UDP leg per shared channel · port 40500</text>
+
+        <defs>
+          <marker id="ar8-w" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-bus"/></marker>
+          <marker id="ar8-t" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-fill-talk"/></marker>
+          <marker id="ar8-l" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-fill-listen"/></marker>
+        </defs>
+      </svg>
+      <figcaption>
+        <b>Dashed grey</b> is control — plan, presence and health pulled by each
+        subscriber from the authority. <b>Amber up / teal down</b> are audio legs.
+        Homing <b>&ldquo;London crew&rdquo;</b> on London means two London desks mix
+        <b>locally</b> with no leg; the shared <b>&ldquo;All-call&rdquo;</b> is homed
+        on the cloud, so each site exchanges <b>one</b> leg with it whatever its
+        headcount.
+      </figcaption>
+    </figure>
+
+    <h3>Homing, legs, and why there is no own-echo</h3>
+    <p>
+      <span class="aud eng">Engineer</span>
+      A channel is <strong>Homed on</strong> <em>This instance</em>, <em>Cloud</em>
+      (<code>"the relative, pre-site-homing spelling (whoever advertises it as
+      theirs)"</code>), or a named <em>Site</em> — stored absolutely as
+      <code>site:&lt;id&gt;</code> so the topology survives wherever the plan is
+      read. A remote instance carrying members of a homed channel exchanges
+      <strong>one media leg per channel</strong> on <code>Talk:LegPort</code>
+      (default 40500 — one inbound port for every leg from every site), told apart
+      by the channel key in each leg's hello.
+    </p>
+    <ul>
+      <li><strong>At the home</strong>, the leg joins the channel as one virtual member — it talks the far site's pre-mix and it listens, so the engine's existing mix-minus hands each site back the mix <em>without that site's own contribution</em>. Each leg is a full member with one personal encode per tick: the cost of a shared channel is the number of <em>instances</em> its members span, so <strong>shard by crew, never round-robin</strong>.</li>
+      <li><strong>At the non-home site</strong>, the uplink is a shadow bus (<code>legup:&lt;channelId&gt;</code>) carrying local talkers <em>only</em> — raising the real bus would fold the returned mix straight back up. The inbound home mix arrives as a program-style input, heard through the ordinary mix-minus path.</li>
+    </ul>
+    <div class="note warn">
+      <span class="tag">Current multi-site limits</span>
+      <ul>
+        <li>A site whose outbound UDP is blocked gets <strong>no leg</strong> (logged) — the WSS tunnel fallback is specified and stubbed, not built.</li>
+        <li>A channel cannot carry both an IFB program source and an inter-site leg (the engine binds one program input per channel). <strong>Cross-site IFB is not available.</strong></li>
+        <li>Hub-and-spoke gives a spoke no route to another spoke unless they directly peer; there is no relay through the authority.</li>
+      </ul>
+    </div>
+
+    <h3>The config authority, and the sync loop</h3>
+    <p>
+      One instance is the <strong>authority</strong>; the others are
+      <strong>subscribers</strong> that pull its channel plan, stations and profiles
+      on the same federation poll. An apply <em>replaces</em> the three collections
+      wholesale — a subscriber cannot drift — which is why entering subscriber mode
+      needs a confirmation naming what will be replaced, and why every plan tab goes
+      read-only under a banner: <code>"This talk plan is centrally managed by
+      {authority} — it's read-only here. Edit it from the authority instance
+      instead."</code> If the authority is unreachable, nothing is wiped: the cached
+      plan keeps mixing.
+    </p>
+
+    <figure class="bleed">
+      <svg viewBox="0 0 880 210" role="img" aria-labelledby="figSYNCtitle">
+        <title id="figSYNCtitle">The config sync loop: authority builds a bundle, subscriber pulls it on the federation poll, compares the content hash, applies in one transaction, and pushes config-changed which each client answers with a re-logon</title>
+
+        <rect class="s-box-cloud" x="20" y="70" width="150" height="70" rx="3"/>
+        <text class="s-label" x="34" y="98">authority</text>
+        <text class="s-label-sm" x="34" y="116">published plan →</text>
+        <text class="s-label-sm" x="34" y="132">/federation/talk-config</text>
+
+        <path class="s-wire" d="M170 105 H 236" marker-end="url(#arSY)"/>
+        <text class="s-label-sm" x="176" y="98">poll (piggybacks federation)</text>
+
+        <rect class="s-decide" x="240" y="78" width="150" height="54" rx="3"/>
+        <text class="s-label" x="254" y="100">hash differs?</text>
+        <text class="s-label-sm" x="254" y="118">advisory — re-hashed here</text>
+
+        <path class="s-wire" d="M390 105 H 456" marker-end="url(#arSY)"/>
+        <text class="s-label-sm" x="398" y="98">yes</text>
+        <rect class="s-box" x="460" y="78" width="170" height="54" rx="3"/>
+        <text class="s-label" x="474" y="100">apply — ONE txn</text>
+        <text class="s-label-sm" x="474" y="118">replace 3 collections</text>
+
+        <path class="s-wire" d="M630 105 H 696" marker-end="url(#arSY)"/>
+        <rect class="s-box" x="700" y="78" width="160" height="54" rx="3"/>
+        <text class="s-label" x="714" y="100">PlanChanged()</text>
+        <text class="s-label-sm" x="714" y="118">→ config-changed push</text>
+
+        <path class="s-listen" d="M780 132 C 780 175, 400 185, 315 132" marker-end="url(#arSYl)"/>
+        <text class="s-label-sm" x="430" y="182">every /ws/talk client answers with a re-logon → fresh profile, monitors, state</text>
+
+        <path class="s-wire" d="M315 132 C 300 150, 260 150, 250 132" stroke-dasharray="3 3"/>
+        <text class="s-label-sm" x="176" y="150">unchanged bundle = cheap no-op: no write, no push</text>
+        <defs>
+          <marker id="arSY" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-bus"/></marker>
+          <marker id="arSYl" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-fill-listen"/></marker>
+        </defs>
+      </svg>
+      <figcaption>
+        The subscriber has no timer of its own — the pull rides the existing
+        federation poll. It re-hashes what it parsed (the advertised <b>version</b>
+        is advisory), applies inside <b>one transaction</b> so a fault never leaves
+        half a plan, then <b>config-changed</b> makes each client re-logon. Only the
+        <b>published</b> template version travels; a draft never moves the bundle.
+      </figcaption>
+    </figure>
+
+    <h3>Identity: Cognito SSO and the lifecycle</h3>
+    <p>
+      The fleet authenticates against one shared identity pool (Cognito). Accounts
+      are provisioned, group-synced and deactivated centrally; a disabled account
+      is refused across the fleet (<code>"Disable \"{name}\"? This immediately ends
+      any of their live Talk sessions and blocks sign-in until re-enabled."</code>),
+      and an <strong>orphan review</strong> surfaces identities no longer backed by
+      the directory. SSO no longer disables password login — the capability is the
+      stored hash, not a label — so a user can hold both.
+    </p>
+
+    <figure class="bleed">
+      <svg viewBox="0 0 880 250" role="img" aria-labelledby="figSSOtitle">
+        <title id="figSSOtitle">The SSO handoff: the portal deep-links the browser to the allocated instance, whose SPA runs its own OIDC login against the shared Cognito pool; because Cognito already holds a session it bounces straight back with a token, and the mobile path uses a one-time logon ticket instead</title>
+
+        <text class="s-title" x="20" y="18">browser — silent under the shared IdP</text>
+        <rect class="s-box" x="20" y="30" width="150" height="52" rx="3"/><text class="s-label" x="34" y="52">portal /allocate</text><text class="s-label-sm" x="34" y="70">deep link → instance</text>
+        <path class="s-wire" d="M170 56 H 236" marker-end="url(#arSSO)"/>
+        <rect class="s-box" x="240" y="30" width="160" height="52" rx="3"/><text class="s-label" x="254" y="52">target SPA</text><text class="s-label-sm" x="254" y="70">sees no token → OIDC login</text>
+        <path class="s-wire" d="M400 56 H 466" marker-end="url(#arSSO)"/>
+        <rect class="s-box-cloud" x="470" y="30" width="160" height="52" rx="3"/><text class="s-label" x="484" y="52">Cognito pool</text><text class="s-label-sm" x="484" y="70">live session already</text>
+        <path class="s-listen" d="M630 68 C 700 90, 360 100, 320 82" marker-end="url(#arSSOl)"/>
+        <text class="s-label-sm" x="360" y="112">bounces straight back with sso_token — no credential prompt → 8 h session JWT</text>
+
+        <path d="M20 140 H 860" stroke="var(--rule)" stroke-width="1" stroke-dasharray="3 5"/>
+        <text class="s-title" x="20" y="162">mobile — a one-time logon ticket</text>
+        <rect class="s-box" x="20" y="174" width="150" height="52" rx="3"/><text class="s-label" x="34" y="196">POST /portal/ticket</text><text class="s-label-sm" x="34" y="214">60 s · single-use</text>
+        <path class="s-wire" d="M170 200 H 236" marker-end="url(#arSSO)"/>
+        <rect class="s-box" x="240" y="174" width="200" height="52" rx="3"/><text class="s-label" x="254" y="196">minted by whoever redeems</text><text class="s-label-sm" x="254" y="214">hub local · or member over federation</text>
+        <path class="s-wire" d="M440 200 H 506" marker-end="url(#arSSO)"/>
+        <rect class="s-box" x="510" y="174" width="200" height="52" rx="3"/><text class="s-label" x="524" y="196">POST /portal/redeem</text><text class="s-label-sm" x="524" y="214">anon · jti consumed once → JWT</text>
+        <text class="s-label-sm" x="510" y="244">returnTo re-validated same-origin — no open redirect</text>
+        <defs>
+          <marker id="arSSO" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-bus"/></marker>
+          <marker id="arSSOl" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-fill-listen"/></marker>
+        </defs>
+      </svg>
+      <figcaption>
+        A browser handoff is invisible: the target instance runs the same OIDC flow
+        against the same pool, so a live Cognito session bounces straight back with
+        no prompt. Mobile uses a <b>60 s single-use</b> logon ticket, minted by
+        whoever redeems it and consumed once by <code>jti</code>; <code>returnTo</code>
+        is re-validated same-origin at both mint and redeem.
+      </figcaption>
+    </figure>
+
+    <h3>The portal: one front door</h3>
+    <p>
+      A station lives on one instance, so with a fleet an operator must reach the
+      right one. The <strong>portal</strong> (<code>"Session broker"</code>) is the
+      single URL: authenticate once on the authority, and
+      <code>GET /api/portal/allocate</code> picks an instance by policy and
+      redirects — <code>"Routing you to {instance} — {reason}."</code> The decision
+      is a pure, deterministic function, testable directly.
+    </p>
+
+    <figure class="bleed">
+      <svg viewBox="0 0 880 300" role="img" aria-labelledby="figALLOCtitle">
+        <title id="figALLOCtitle">The portal allocation decision flow: station exclusivity, then single-instance, then channel-home affinity, then capacity below a session ceiling, then hub fallback</title>
+
+        <rect class="s-box" x="20" y="130" width="120" height="44" rx="3"/><text class="s-label" x="34" y="156">login</text>
+        <path class="s-wire" d="M140 152 H 176" marker-end="url(#arAL)"/>
+
+        <rect class="s-decide" x="180" y="120" width="150" height="64" rx="3"/>
+        <text class="s-label" x="194" y="146">station already</text><text class="s-label" x="194" y="162">online somewhere?</text>
+        <path class="s-listen" d="M255 120 V 92" marker-end="url(#arALl)"/><text class="s-label-sm" x="262" y="100">yes → route there</text>
+        <text class="s-label-sm" x="196" y="204">station-exclusivity</text>
+
+        <path class="s-wire" d="M330 152 H 366" marker-end="url(#arAL)"/><text class="s-label-sm" x="336" y="146">no</text>
+        <rect class="s-decide" x="370" y="120" width="130" height="64" rx="3"/>
+        <text class="s-label" x="384" y="146">one instance</text><text class="s-label" x="384" y="162">in the fleet?</text>
+        <path class="s-listen" d="M435 120 V 92" marker-end="url(#arALl)"/><text class="s-label-sm" x="442" y="100">yes → the hub</text>
+        <text class="s-label-sm" x="386" y="204">single-instance</text>
+
+        <path class="s-wire" d="M500 152 H 536" marker-end="url(#arAL)"/><text class="s-label-sm" x="506" y="146">no</text>
+        <rect class="s-decide" x="540" y="120" width="150" height="64" rx="3"/>
+        <text class="s-label" x="554" y="146">which site homes</text><text class="s-label" x="554" y="162">most of my channels?</text>
+        <path class="s-listen" d="M615 120 V 92" marker-end="url(#arALl)"/><text class="s-label-sm" x="622" y="100">prefer it</text>
+        <text class="s-label-sm" x="556" y="204">channel-home</text>
+
+        <path class="s-wire" d="M690 152 H 726" marker-end="url(#arAL)"/><text class="s-label-sm" x="696" y="146">tie</text>
+        <rect class="s-decide" x="730" y="120" width="130" height="64" rx="3"/>
+        <text class="s-label" x="744" y="146">fewest sessions</text><text class="s-label" x="744" y="162">below ceiling?</text>
+        <text class="s-label-sm" x="746" y="204">capacity (200)</text>
+        <path class="s-listen" d="M795 184 V 214" marker-end="url(#arALl)"/><text class="s-label-sm" x="700" y="232">all over ceiling → hub-fallback</text>
+
+        <text class="s-label-sm" x="20" y="270">Ties break: home score desc → sessions asc → hub first → site id ordinal. Same inputs, same instance, always.</text>
+        <defs>
+          <marker id="arAL" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-bus"/></marker>
+          <marker id="arALl" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" class="s-fill-listen"/></marker>
+        </defs>
+      </svg>
+      <figcaption>
+        Five rules in strict order. <b>Station exclusivity</b> wins over everything
+        — if the station is already live on a reachable candidate, the user is
+        routed there and the re-logon replaces the old session, so it is never live
+        twice. Then a one-instance fleet lands on the hub; then the site homing the
+        most of the user's channels (each co-located member is one fewer leg); then
+        the least-busy instance below <code>Portal:InstanceSessionCeiling</code>
+        (default 200); then, if all are full, the hub.
+      </figcaption>
+    </figure>
+
+    <div class="note">
+      <span class="tag">Two documented gaps</span>
+      <p>
+        Exclusivity is <strong>best-effort at brokering, not a fleet-wide lock</strong>:
+        RTAP is a poll, so two near-simultaneous allocations can still both route
+        before either shows in presence. It collapses the common double-logon (a
+        user opening the portal twice); a hard cross-instance claim is the follow-up.
+        And there is <strong>no region/geo attribute today</strong> — "region
+        affinity" is realised as channel-home affinity, which is the best the plan
+        can infer; true GeoIP routing is a later score before capacity.
+      </p>
+    </div>
+
+    <figure>
+      <img src="img/32-portal.png" alt="The portal landing page: a login card, then a routing message naming the chosen instance and the reason.">
+      <figcaption>The <b>/portal</b> landing page — sign in once, then <code>"Finding your instance…"</code> and <code>"Routing you to {instance} — {reason}."</code> with reasons like <code>"it hosts your channels"</code> or <code>"it's the least busy instance right now"</code>.</figcaption>
+    </figure>
+
+    <h3>Seeing and driving the fleet</h3>
+    <p>
+      The <strong>Fleet</strong> dashboard is a hub-side inventory built entirely on
+      the existing federation plane — no new poller. Each instance serves a cheap
+      self-descriptor (<code>GET /api/federation/health</code>) read from the mixer
+      snapshot; the hub aggregates them at <code>GET /api/fleet/status</code>. Per
+      instance it shows <strong>Sessions</strong>, <strong>Active channels</strong>,
+      <strong>Legs</strong>, <strong>Mixer</strong> (running/stopped), config mode
+      and licence — a member never disappears, holding its last-known identity while
+      <strong>Stale</strong> or <strong>Unreachable</strong>.
+    </p>
+    <p>
+      The <strong>management proxy</strong> lets the hub <em>act</em> on a direct
+      member over the same link — but only within four controls: the caller is a hub
+      admin; tokens are scoped, mint-on-demand and 60&nbsp;s (no stored
+      super-token); every op is audited on both ends; and the member must opt in
+      (<strong>Allow this instance to be managed</strong>,
+      <code>"Off by default — nothing changes until you opt in"</code>). Reads are a
+      mirror; the one shipped write is setting a member's Talk config mode / site
+      alias, and its destructive form still travels the <code>confirm required</code>
+      guard back through the proxy: <code>"On its next poll, every station, channel
+      and panel profile there will be REPLACED by {authority}'s plan — nothing local
+      is merged or kept."</code>
+    </p>
+
+    <figure>
+      <img src="img/31-fleet-dashboard.png" alt="The Fleet dashboard: per-instance cards showing sessions, active channels, legs, mixer state, config mode and licence, plus an inter-site legs diagram and a summary crosspoint matrix.">
+      <figcaption>The <b>Fleet</b> dashboard — instance cards, the <b>Inter-site legs</b> diagram, and the <b>Fleet crosspoint matrix (summary)</b>. Note its honesty: <code>"Each instance reports only its OWN total leg count"</code>, and for detail you open that instance's own Talk Status.</figcaption>
+    </figure>
+
+    <details>
+      <summary>Two private conversations across two servers, and why nobody hears the wrong one</summary>
+      <p>
+        Nothing routes audio to a <em>person</em>. Two p2p channels
+        (<code>ch-x</code> = b2+a1, <code>ch-y</code> = b1+a2) are two buses; a talk
+        key selects a bus, a listen key subscribes to one, and the two buses never
+        touch. Each crosses on its own leg — two legs, <strong>one UDP port</strong>
+        on the home (40500), told apart by the channel key in each hello. Each leg
+        carries a shadow bus up (that site's talkers only, never the returning mix)
+        and the home's mix-minus sends back the bus minus that site's contribution.
+        <code>a1</code> has no key on <code>ch-y</code>, so <code>a1</code>'s
+        <code>state</code> frames never mention it: the private line stays private.
+        Cross-instance <em>audio</em> for a station-key pair is shipped for the
+        two-region common-home case (the authority homes the pair); the far-end
+        <em>tally</em> glow across instances is the one deferred piece.
+      </p>
+    </details>
+  </section>
+
+  <!-- ============================================================ 09 -->
+  <section id="c09">
+    <h2><span class="num">09</span>Admin how-tos</h2>
+
+    <figure>
+      <img src="img/28-talk-plan-stations.png" alt="The Talk Plan Stations tab: a table of stations with status, assigned users, allowed channels and panel profile, plus bulk-assign controls.">
+      <figcaption>The <b>Talk Plan &rsaquo; Stations</b> tab — <b>Online</b>/<b>Talking</b> status, assignments, and the <b>Bulk assign panel</b> controls.</figcaption>
+    </figure>
+
+    <h3>Build a plan, in the order that works</h3>
+    <ol>
+      <li><strong>Channels first.</strong> On the <strong>Channels</strong> tab, create each bus and pick its <strong>Kind</strong>. Name talkers for group/p2p/ifb; leave a party line unnamed for talk-for-all. For an IFB, pick a <strong>Program source</strong> and set a deliberate <strong>Custom dim level</strong>, and turn <strong>Listener open</strong> on so the talent gets a key. Set <strong>Homed on</strong> to the site where its people are.</li>
+      <li><strong>Stations next.</strong> Create a station per position, set its <strong>Allowed channels</strong> (<code>"Channels this station may key up."</code>) and its <strong>Assigned users</strong> / <strong>Assigned groups</strong> — or leave both empty for a shared kiosk position open to any authenticated user.</li>
+      <li><strong>Profiles last.</strong> Lay out keys — each picks a <strong>Channel</strong> (or a person, for a station-key), a <strong>Slot</strong> and <strong>Page</strong>, a <strong>Talk mode</strong>, a listen default, and a colour. A live <strong>Rack preview</strong> shows the layout. Edits are a <strong>Draft</strong> until you <strong>Publish</strong>.</li>
+      <li><strong>Assign.</strong> Assign a profile to each station, or use <strong>Bulk assign panel</strong> / a <strong>Site default panel</strong> so a bare station inherits one. The <strong>Effective panel</strong> preview answers "what will this person see", resolved exactly as logon resolves it.</li>
+    </ol>
+
+    <h3>Build a shared crew panel in one action</h3>
+    <p>
+      Open <strong>Talk Plan &rsaquo; Panel Builder</strong>. Pick the members (the
+      order sets key order), optionally add <strong>Shared channels</strong> (a party
+      line the group already has), name it, and use <strong>Preview as</strong> to
+      confirm each member's self-excluded view. <strong>Build panel and assign to
+      members</strong> creates the profile and assigns it to every chosen station at
+      once — <code>"Created \"{profile}\" and assigned it to {count} stations."</code>
+      A member not yet allowed on a chosen channel is flagged, not blocked:
+      <code>"{member} isn't allowed on \"{channel}\""</code> — the key renders but
+      won't work until you grant the channel.
+    </p>
+
+    <h3>Provision a wall / kiosk panel</h3>
+    <p>
+      A <strong>Talk</strong> key can sit on an ordinary monitoring panel beside
+      source pads (it shares the signed-in session's connection). On a
+      <strong>kiosk</strong> page (<code>/p/{slug}</code>) it is different: a kiosk
+      has no station logon, so a talk pad renders as a static, labelled key with a
+      <strong>TALK</strong> badge and a link to the full client, and the wall view
+      marks a recorded channel <code>"Recorded"</code>. A kiosk cannot show live
+      tally today — it holds no authenticated station connection to receive it. For
+      a live, tallying key, sign in at <code>/talk</code> or use a panel from a
+      signed-in console session.
+    </p>
+
+    <h3>Multi-site, minimally</h3>
+    <ol>
+      <li>Federate the instances (Federation), and licence <strong>Federation</strong> + <strong>Remote Talk</strong> on each.</li>
+      <li>Pick one authority; switch the others to <strong>subscriber</strong> of it (<code>PUT /api/talk/config</code>, confirming the replace) — or drive it from the hub via the management proxy if the member has opted in.</li>
+      <li>Home each channel where its people are: a crew's own lines on the crew's instance (local, zero legs), fleet-wide channels on the cloud.</li>
+      <li>Open the ports: 443 in for signalling + SPA, <code>40000-40199</code> UDP in for browser media, outbound HTTPS to the authority; mix/home instances also need <code>40500</code> UDP in. Set <code>Talk:PublicIp</code> on any cloud box behind 1:1 NAT.</li>
+    </ol>
+  </section>
+
+  <!-- ============================================================ 10 -->
+  <section id="c10">
+    <h2><span class="num">10</span>Troubleshooting</h2>
+
+    <figure>
+      <img src="img/27-talk-status-matrix.png" alt="Talk Status: the mixer health card, the buses table, the live crosspoint matrix, and per-session rows with uplink meters and ICE candidate-pair state.">
+      <figcaption>The first stop for almost everything: <b>Talk Status</b> — mixer health (tick timing, <b>Missed deadlines</b>, <b>Crosspoint ops</b>, <b>Encoders</b>), the <b>Buses</b> table, and per-session <b>Uplink</b> meters and <b>Candidate pair</b> state.</figcaption>
+    </figure>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Symptom</th><th>Likely cause</th><th>What to check</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>I'm on a channel but hear nothing</td>
+            <td>You're alone on it, or the other mic is gated shut. Mix-minus removes your own voice, so a bus with only you on it is silent by design.</td>
+            <td>Open <strong>Talk Status</strong>: the channel's <strong>Buses</strong> row shows <strong>Talkers</strong>/<strong>Listeners</strong> — if talkers is 0, nobody is speaking. Confirm the far mic on its own <strong>Uplink</strong> meter, not by ear.</td>
+          </tr>
+          <tr>
+            <td>Talk key never opens; mic never arms</td>
+            <td>The browser refused the mic, or the page isn't a secure context.</td>
+            <td><code>getUserMedia</code> needs HTTPS (or <code>localhost</code>) — a plain <code>http://</code> LAN console won't even prompt. Check the address-bar mic icon; the client shows <code>"Microphone access was denied — you can still listen, but talk keys won't work."</code></td>
+          </tr>
+          <tr>
+            <td>Stuck on <strong>Connecting…</strong> / <strong>Reconnecting…</strong> forever</td>
+            <td>A stalled WebSocket or an ICE negotiation that never settles (often UDP blocked outbound — there is no TURN).</td>
+            <td>Hard-refresh rather than re-pressing <strong>Join</strong>; the client backs off up to 5 times then gives up with <code>"Connection lost after {count} attempts."</code> In Talk Status, an <strong>ICE</strong> stuck amber and <code>"no pair yet"</code> points at connectivity; confirm 40000&ndash;40199 UDP is open and <code>Talk:PublicIp</code> is set on a NATed cloud box.</td>
+          </tr>
+          <tr>
+            <td>Talk cuts out after a few seconds, every time</td>
+            <td>The instance isn't licensed for Remote Talk.</td>
+            <td><strong>Settings &rsaquo; Licence</strong> → <strong>Remote Talk</strong>. Unlicensed sessions get a 5-second preview then close with <code>"Remote Talk preview ended — a licence is required to continue."</code></td>
+          </tr>
+          <tr>
+            <td>A panel keeps showing an old layout after an admin edit</td>
+            <td>Expected briefly — the client answers <code>config-changed</code> with a re-logon. If it persists, the profile edit may be an unpublished <strong>Draft</strong>.</td>
+            <td>The fleet only receives <strong>Published</strong> versions; <strong>Publish</strong> the profile. Local live panels render the draft, subscribers render the last published.</td>
+          </tr>
+          <tr>
+            <td>Everyone's monitoring dropped when I renamed a channel</td>
+            <td>Expected — a plan edit pushes <code>config-changed</code>, which releases every monitored source (they're session state).</td>
+            <td>Nothing to fix; monitors re-arm on the client's re-sync. Talk/listen keys are unaffected.</td>
+          </tr>
+          <tr>
+            <td>A kiosk talk key never lights up</td>
+            <td>Expected — kiosk keys are static, with no station connection to receive tally.</td>
+            <td>Sign in at <code>/talk</code> or use a panel from a signed-in console session for a live, tallying key.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <figure>
+      <img src="img/26-talk-client-rack.png" alt="A joined station's rack in the /talk client, with one key latched open showing the MIC badge and another showing tally from a remote talker.">
+      <figcaption>What &ldquo;working&rdquo; looks like: a joined rack, one key latched (<b>MIC</b> badge lit), another tallying a remote talker, and a live connection dot in the footer.</figcaption>
+    </figure>
+
+    <div class="note measured">
+      <span class="tag">The two meanings of &ldquo;active&rdquo;</span>
+      <p>
+        In a fault call, don't be caught by this: the <code>state</code> frame's
+        tally is <strong>key position</strong> (a keyed-up desk saying nothing still
+        counts), but Talk Status's <strong>Buses</strong> <code>active</code> is
+        <strong>gate state</strong> (is a mic actually passing audio). A glowing
+        panel and a dim bus row are both correct — one is "keyed", the other is
+        "audible".
+      </p>
+    </div>
+  </section>
+
+  <footer class="bleed">
+    <div style="max-width: var(--measure); margin: 0 auto;">
+      Remote Talk manual (RPC-201), read from the code at main @ <code>c50db91</code>,
+      31 July 2026 — engine <code>src/RemotePlayCore.Talk</code>, wiring
+      <code>src/RemotePlayCore.Control/Talk*.cs</code>,
+      <code>PortalEndpoints</code>, <code>FleetStatusEndpoints</code>, frozen
+      contract <code>docs/remote-talk.md</code> (§§1&ndash;14), listen model
+      <code>docs/listen-semantics.md</code>. UI strings quoted from
+      <code>web/&hellip;/src/locales/en.json</code>. Timings characterise a 22-core
+      dev box (AVX2, Release, shipping Concentus settings) driving the mixer
+      directly, reported as the fastest of five batches — they describe the engine,
+      not a production server; measure <code>tickP99Us</code> on the target
+      hardware. Screenshots captured by <code>build/manual-screenshots.mjs</code>
+      against a live instance.
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>
