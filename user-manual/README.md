@@ -32,8 +32,10 @@ UI.
    — [Groups](#groups), [General](#general), [TLS](#tls), [Email](#email), [Backups](#backups)
 8. [Licence](#8-licence)
 9. [Remote Talk](#9-remote-talk)
-   — [concepts](#concepts), [the /talk client](#the-talk-client), [panels and kiosk displays](#panels-and-kiosk-displays), [station keys, Reply, and shared crew panels](#station-keys-reply-and-shared-crew-panels), [per-key appearance, saved levels, and paged racks](#per-key-appearance-saved-levels-and-paged-racks), [admin: Talk Plan](#admin-talk-plan), [Panel Builder and bulk assignment](#panel-builder-and-bulk-assignment), [recording a channel](#recording-a-channel), [Talk Status diagnostics](#talk-status-diagnostics), [multi-site: federation and shared plans](#multi-site-federation-and-shared-plans), [the fleet: homing, the dashboard, and the portal](#the-fleet-homing-the-dashboard-and-the-portal), [licensing](#licensing), [troubleshooting](#troubleshooting)
-10. [What this revision does not cover](#what-this-revision-does-not-cover)
+   — [the mental model](#the-mental-model), [concepts](#concepts), [stations](#stations), [productions and teams](#productions-and-teams), [channels: the four kinds](#channels-the-four-kinds), [panel profiles](#panel-profiles), [walking through a talk plan](#walking-through-a-talk-plan), [Panel Builder](#panel-builder), [wall panels](#wall-panels), [Plan Sync](#plan-sync-authority-and-subscriber), [the /talk client](#the-talk-client), [panels and kiosk displays](#panels-and-kiosk-displays), [recording a channel](#recording-a-channel), [Talk Status diagnostics](#talk-status-diagnostics), [the fleet](#the-fleet-instances-homing-and-the-portal), [licensing](#licensing), [known issues](#known-issues-in-this-build), [troubleshooting](#troubleshooting)
+10. [Example configurations](#10-example-configurations)
+    — [sports broadcast](#sports-broadcast--a-single-ob-truck), [ballet](#ballet--a-lyric-theatre), [Olympics](#olympics--multi-venue-one-broadcast-centre), [a parade](#a-parade--a-moving-route)
+11. [What this revision does not cover](#what-this-revision-does-not-cover)
 
 ---
 
@@ -690,422 +692,988 @@ system (Clear-Com, RTS and similar), with no beltpack and no intercom panel.
 > folder). This chapter is the operator-and-admin walkthrough; that page is the
 > engineering reference. Cross-references below point into it by section.
 
+### The mental model
+
+Four questions, four objects. Almost every configuration mistake in Remote Talk
+comes from answering one of them with the wrong object, so it is worth fixing
+them in mind before opening any editor.
+
+| Question | Object | Set up on |
+|---|---|---|
+| **Who** is on the intercom? | **Station** | Talk Plan › **Stations** |
+| **What** can they talk on? | **Channel** | Talk Plan › **Channels** |
+| **How** does it look to them? | **Panel profile** | Talk Plan › **Profiles** |
+| **Where** does the audio mix? | **Homed on**, per channel | Talk Plan › **Channels** |
+
+A useful way to hold it: a **station is a seat, not a person**. "Camera 2" is a
+seat that exists whether or not anyone is sitting in it, and whoever is rostered
+today signs in and takes it. Channels are the wires between seats. A panel
+profile is the sticker-set on the physical panel in front of the seat. And
+homing is which building the wires physically meet in.
+
+#### People versus channels — the distinction that matters most
+
+A key on a panel can point at one of exactly two things, and the difference
+governs privacy, setup effort and who can hear you.
+
+- **A key pointing at a channel** is a *bus*. Everyone who has that channel on
+  their panel and is listening hears everyone who keys it. It is a party line, a
+  ring-down group, a conference. You create the channel once and grant it to
+  everyone who needs it.
+- **A key pointing at a person** — a **station key** — is a *private line to one
+  seat*. No channel exists for it in the plan, no administrator draws it, and no
+  third station can join it or see it. The server materialises a hidden line
+  when both ends are logged on and tears it down when they aren't.
+
+In the profile editor this is the **Target** column: **Channel** or **Person**.
+Choosing **Person** swaps the channel picker for *"Choose a station…"*.
+
+Reach for a channel when the same conversation should be heard by a *group*, and
+for a person key when one named seat needs to reach another named seat without
+anyone else hearing. A production of twenty people typically has half a dozen
+channels and a great many person keys — the person keys are the cheap ones,
+because they need no plan entry at all.
+
+The one thing person keys cannot do is exist for somebody who isn't logged on.
+A channel is always there; a private line only forms when both ends are live.
+
 ### Concepts
 
 | Term | Meaning |
 |---|---|
-| **Station** | A predefined intercom identity — like a SIP extension — with a display name, an allowed set of channels, and a panel profile of keys. A signed-in user logs on to a station; a station is online in one place at a time, and logging on elsewhere while it's already in use is refused. |
-| **Channel** | A shared audio bus, one of four kinds. **Party line** — every assigned member can talk and everyone can listen. **Group** — only its talker stations may key up, but listening can be left open to anyone. **P2P** — a private line between exactly two stations. **IFB** — a program feed (an ordinary Remote Play source) that talk audio interrupts and ducks. |
-| **Talk key** | Opens the mic into a channel. Depending on how the key is configured: **hold** it down for as long as you want to talk (momentary), or give it a quick **tap** to lock it open until you tap it again (latching) — some keys support both, using a hold-vs-tap split. |
-| **Listen key** | Subscribes to a channel's mix without opening the mic, with its own listen-level control per key. |
+| **Station** | A predefined intercom identity — like a SIP extension — with a display name, an allowed set of channels, and a panel profile of keys. A signed-in user logs on to a station; a station is online in one place at a time. |
+| **Channel** | A shared audio bus, one of four kinds — **Party line**, **Group**, **P2P**, **IFB**. See [Channels](#channels-the-four-kinds). |
+| **Panel profile** | The named layout of keys a station renders when someone logs on to it. |
+| **Talk key** | Opens the mic into a channel or a private line. **Hold** for momentary, **tap** to latch, depending on the key's **Talk mode**. |
+| **Listen key** | Subscribes to a channel's mix without opening the mic, with its own level control per key. |
 | **Tally** | The lamp on a key lights whenever someone is talking on that channel — including you, with a small mic badge to tell the two apart. |
-| **Monitoring** | The same connection a station uses for the intercom can also carry an ordinary Remote Play source — a Livewire feed, an AES67 stream — mixed in alongside the talk channels, so a station can listen to on-air audio without a second player. |
-| **Dim** | While an IFB channel has an interrupt talker keyed up, the program feed it carries is automatically turned down (ducked) by a configured amount, and returns to normal the moment nobody is talking. |
+| **Production** | A grouping above stations, used by the station picker so an operator working one show doesn't scroll past every other show's seats. |
+| **Monitoring** | The same connection a station uses for the intercom can also carry an ordinary Remote Play source, mixed in alongside the talk channels. |
+| **Dim / duck** | Turning a programme feed down while somebody is talking over it, and restoring it the instant they stop. |
+| **Homing** | Which instance's mix matrix actually mixes a given channel. |
 
-Stations, channels and panel profiles are set up by an administrator under
-**Talk Plan** — see [Admin: Talk Plan](#admin-talk-plan) below. An operator
-only ever chooses a station and presses keys.
+### Stations
+
+**Talk Plan › Stations** lists every station with its live **Status**
+(**Online** or **Talking** while logged on, **Disabled** if switched off, blank
+otherwise), its assigned users and groups, its allowed channels, and its panel
+profile.
+
+![The Stations tab, with Plan Sync and the site default panel above it](img/28-talk-plan-stations.png)
+
+The station editor has five controls, and each answers a different question.
+
+**Name** — what the seat is called. This is what appears on other people's
+panels when they have a person key to it, and in the station picker. Name it
+after the *role*, not the person: **Camera 2**, **Stage Left**, **VT**. Roles
+outlive rosters.
+
+**Enabled** — *"Disabled stations refuse logon and aren't advertised as a
+source."* Disabling is the reversible way to take a seat out of service; it does
+not delete the station or its keys, and other panels keep their person keys to
+it (those keys simply never connect). Deleting, by contrast, warns: *"It's
+removed from every channel's talker list immediately. A station currently logged
+on stays connected until the user logs off — the next logon attempt is then
+refused."*
+
+**Assigned users** — *"Empty = any authenticated user may log on. Admins can
+always log on regardless of this list."* This is the single most
+misunderstood control on the page, because **empty means open, not closed**. A
+brand-new station is reachable by every account on the instance until you
+restrict it. The editor states the resulting posture back to you in plain words:
+*"Open — any authenticated user may log on."*, or *"Restricted to the listed
+users, plus any listed groups' members."*
+
+**Assigned groups** — *"Members of any listed group may also log on — access is
+users plus groups."* Access is the **union** of the two lists, never the
+intersection. Groups are the right tool for a crew that changes weekly: add the
+group to the station once and manage membership on **Admin › Groups**. With
+groups only and no individual users, the summary reads *"Restricted to the
+listed groups' members only (no individually assigned users)."*
+
+**Allowed channels** — *"Channels this station may key up."* This is the seat's
+authority, and it is enforced at the server, not at the panel. A key can exist
+on a profile for a channel the station isn't allowed on — it renders, and it
+won't work. The Panel Builder warns about exactly this case rather than
+silently omitting the key.
+
+**Panel profile** — which layout this seat renders, or **None — no keys**. See
+[Panel profiles](#panel-profiles) for what a profile contains and
+[Which panel a station actually renders](#which-panel-a-station-actually-renders)
+for how this interacts with the site default.
+
+#### One seat, one place at a time
+
+A station can be live in exactly one browser. The station picker shows each
+station's occupancy before you commit: **free**, *"held by you elsewhere"*, or
+*"in use by {name}"*, with a running count in the header — *"{free} of {total}
+free"*.
+
+The rule is **one seat per user, and you may only take over your own**:
+
+- A seat **you** hold in another tab or on another device offers **Take over** —
+  claiming it releases the old session and drops its socket. This is the escape
+  hatch for the laptop you closed without logging off.
+- A seat **somebody else** holds is simply blocked, with *"in use by {name}"*.
+  There is no override in the UI; find the person, or have an admin disable and
+  re-enable the station.
+- Asking for seat B while you hold seat A releases A automatically. You are never
+  in two seats at once.
+
+This is deliberate. An intercom seat live in two places has two open microphones
+and two sets of tally, and neither operator can tell which is which. A logon
+refused for this reason reports *"That station is already logged on elsewhere."*
+
+#### Managing access from the person's side
+
+Editing station by station is the wrong shape when you are onboarding a person
+rather than building a plan. **Admin › Users › Talk Access** inverts it: pick a
+user or a group on the left and see *"— talk station access"* on the right,
+listing their
+**Assigned stations** and, separately, the **Open stations** every authenticated
+user can already reach (*"Open (any user)"*).
+
+It carries three bulk tools:
+
+- **Add stations…** — *"Adds this user to the selected stations' assigned-user
+  list."*
+- **Bulk access** — assign many users, or many groups, to one station at once.
+- **Clone access** — *"Copies one user's explicit station assignments onto
+  another user. Stations open to everyone aren't touched — they already reach
+  the target user."* This is the fast path for "give the new operator what the
+  old one had".
+
+![Users › Talk Access: station access read from the person's side](img/37-talk-access.png)
+
+One warning here deserves attention because it changes behaviour for people you
+weren't editing: *"At least one selected station is currently open to every
+user. Adding this user to it converts it from \"anyone\" to just its
+assigned-user list (now including this user) — the other users who could log on
+today no longer could."* Adding the first assignee to an open station **locks it
+down**.
+
+### Productions and teams
+
+A **production** is a boundary drawn around part of the plan, so one server can
+carry several unrelated shows without them hearing each other. Where an instance
+runs a single show it can be ignored entirely — everything sits in the org's
+implicit default production and behaves exactly as it did before productions
+existed.
+
+Six rules govern it, and three of them are worth an operator's attention:
+
+- **A channel is either scoped to one production or marked org-wide, never
+  both.** Org-wide is how an all-call or a safety channel reaches everybody.
+- **A station may only be granted channels from its own production, plus the
+  org-wide ones.** This is validated when you author it *and* re-checked at
+  logon, so a channel that drifts out of scope is dropped rather than honoured.
+- **Station keys are contained by production.** A person key may not target a
+  station in a different production unless the authoring station is explicitly
+  allowed to cross. Without that containment a shared panel would be a way to
+  dial into another show's crew, which is precisely the hole productions exist
+  to close.
+
+Moving a station between productions is audited and **force-drops its live
+session** — the operator is disconnected, because their allowed channels have
+just changed underneath them.
+
+A **team** is a production-scoped bundle of roles used as a **template** when
+provisioning people, not as a live authority. Changing a team does not
+retroactively re-permission anybody; it changes what the next person stamped from
+it receives. If you need a live grant that follows membership, use a **group** on
+the station's **Assigned groups** instead — that *is* evaluated at logon.
+
+### Channels: the four kinds
+
+**Talk Plan › Channels** lists every channel's **Kind**, talker count, whether
+listening is open, where it's homed, its priority and any output bridge.
+
+The kind is not cosmetic — it decides who may key up and who may hear.
+
+| Kind | Who can talk | Who can hear | Use it for |
+|---|---|---|---|
+| **Party line** | every assigned member | everyone on it | The default. Crew conversation where anyone may speak — camera crew, lighting, general production. |
+| **Group** | only the listed **Talker stations** | anyone, if **Listener open** | One-to-many with discipline. A director's ring-down to the floor, where the floor listens but cannot key back on that channel. |
+| **P2P** | exactly two stations | those two | A permanent private line between two named seats, drawn in the plan (as distinct from an ad-hoc person key, which needs no plan entry). |
+| **IFB** | the interrupt talkers | the talent | Talent earpiece. Carries a programme feed and ducks it while somebody interrupts. |
+
+**Talker stations** — *"Stations allowed to open a mic into this channel."* For
+a **Party line** this is the membership. For a **Group** it is the privileged
+few. A **P2P** channel enforces *"A P2P channel needs EXACTLY two talker
+stations."* and counts as you pick (*"{count} of 2 selected"*).
+
+**Listener open** — *"On = any station may listen. Off = only the listed talkers
+may listen."* This is what makes a Group channel useful: talkers restricted,
+listening wide open. The list column shows **Open** or **Talkers only**.
+
+**Priority** — *"Interrupt precedence when several channels talk at once — higher
+wins."* This matters when more than one IFB can interrupt the same ear: give the
+director a higher priority than the producer and the director's interrupt takes
+the ear.
+
+**Output bridge** — an optional audio output the channel's mix is *additionally*
+sent to. This is how a talk channel reaches hardware: a wall speaker, a
+loudspeaker in a scene dock, a feed into a hardware matrix. Without it a channel
+exists only for browser sessions.
+
+#### IFB channels: programme source and dim
+
+An **IFB** channel additionally takes a **Program source** — *"The program feed
+this IFB channel interrupts/dims. Required for IFB channels; a talk
+station/channel can't be used as the program source."* It is any ordinary
+discovered source: a Livewire feed, an AES67 stream.
+
+![A channel editor open on the Channels tab](img/34-channel-editor.png)
+
+The **Dim** control decides how far that programme is pulled down while somebody
+interrupts. Left alone it uses the **Engine default**; switching on **Custom dim
+level** exposes a slider, *"How far the program is ducked while an interrupt
+talker is active."*
+
+The dim is **not a standing attenuation**. It engages only while somebody is
+actually keyed on that IFB and lifts the moment they stop. Talent hears full
+programme the rest of the time.
+
+#### Homed on — where the audio actually mixes
+
+**Homed on** is the setting operators skip and then spend a week debugging
+latency they didn't need to have. *"Which instance's matrix mixes this channel.
+\"Cloud\" is the relative, pre-site-homing spelling (whoever advertises it as
+theirs); pick a specific site to home it there absolutely, wherever the plan is
+read."*
+
+Three choices:
+
+- **This instance** — mix it here.
+- **Cloud** — mix it at whichever instance advertises itself as the cloud. This
+  is *relative*: it resolves differently depending on which instance reads the
+  plan.
+- **Site: {site}** — mix it at one named site, absolutely, wherever the plan is
+  read. Sites are named by the **Alias** on the Plan Sync panel.
+
+**Why it matters.** Every participant on a channel needs an audio path to
+wherever that channel mixes. Home a channel badly and audio takes a needless
+round trip.
+
+- A **London crew's own party line**, homed **on London**, mixes locally: two
+  London desks talking to each other never leave the building. Home the same
+  channel on the cloud and every word makes a round trip to another region and
+  back, adding latency to a conversation that never needed to leave.
+- A **fleet-wide all-call**, homed on the cloud, costs each site exactly **one**
+  audio leg to the cloud regardless of how many people that site has on it. Home
+  it at one site instead and every other site's members each pull a leg to that
+  site.
+
+The rule of thumb: **home a channel where most of its people are**. Local
+conversation local; genuinely cross-site conversation central.
+
+The constraint to respect: the site a channel names must be a reachable
+federation peer of every instance carrying its members — a spoke cannot reach
+another spoke unless they peer directly. Naming a site that hasn't announced
+itself yet is rejected with *"Site \"{value}\" isn't recognised yet — home a
+channel on this instance, or on a federation peer that has advertised its site
+identity (that takes one poll)."*
+
+Homing also decides **where a channel is recorded** — at home, exactly once,
+rather than once per site.
+
+### Panel profiles
+
+A **panel profile** is a named set of keys. It is the layout, not the rights:
+what an operator *sees* and *where*. What they are *allowed* to do comes from the
+station's **Allowed channels**. Keeping those two separate is what lets one
+shared profile be handed to twenty stations, each of which resolves it against
+its own permissions.
+
+**Talk Plan › Profiles** lists each profile and its key count. Inside, keys are a
+table — one row per key — plus a live preview.
+
+![A panel profile editor: the key table, with Target switching each row between Channel and Person](img/35-profile-editor.png)
+
+![The same profile scrolled to the Rack preview — eight keys as they will actually lay out](img/35b-rack-preview.png)
+
+#### The columns, one at a time
+
+**Target** — **Channel** or **Person**, as described in
+[People versus channels](#people-versus-channels--the-distinction-that-matters-most).
+Choosing one clears the other; the server refuses both (*"Key {slot}: choose
+either a channel or a target person, not both."*) and neither (*"…choose a
+channel or a target person."*).
+
+**Slot** — the key's position in the rack, numbered from 0. Two keys cannot share
+one: *"Two keys can't share the same slot (highlighted in red)."* Slots are how
+you get muscle memory — the same channel in the same place on every panel in the
+building means an operator can hit it without looking.
+
+**Page** — *"The rack surface page this key lives on (0..32) — slot numbering
+restarts on each page."* A profile with more keys than one rack shows spans
+several pages, and the client renders a page selector (*"Page {n}"*). Because
+numbering restarts, slot 0 on page 0 and slot 0 on page 1 are different keys.
+Use pages to separate *modes of work* — page 0 for the channels needed
+constantly, page 1 for the ones needed at a scene change — rather than simply
+overflowing.
+
+**Label** — free text, up to 64 characters, falling back to the channel or
+person's name when blank. Panels are read at a glance and in a hurry: **FLOOR**
+beats **Studio 3 Floor Party Line (main)**.
+
+**Talk mode** — **Momentary**, **Latching** or **Both**.
+
+- **Momentary** — the mic is open only while the key is physically held. Nothing
+  can be left open by accident. Correct for anything that interrupts.
+- **Latching** — tap to open, tap to close. Correct for a conversation you're
+  going to be in for ten minutes.
+- **Both** — the hold-versus-tap split: hold it and it's momentary, tap it and it
+  latches. The comfortable default for general crew channels.
+
+**No latch** — forbids latching on a **Momentary** or **Both** key, for
+discipline-critical channels where a stuck key would go to air. The client says
+*"Momentary only — this key can't be latched. Hold to talk."* It is greyed out on
+a **Latching** key, with *"A latching key already can't be forbidden from
+latching — this only applies to momentary/both keys."*
+
+**Listen by default** — whether this key is already listening when the operator
+logs on. Set it for the channels somebody must not miss: a director's ring-down
+should be live from the moment they sit down, not after they remember to open
+it.
+
+**Default level** — the listen level this key starts at (it can start muted),
+before any personal adjustment. Use it to pre-balance a panel: programme at
+full, background chatter a few dB down.
+
+**Colour** — the lamp colour, from the same six-swatch palette panels use
+(**amber** — the default, **red**, **green**, **blue**, **violet**, **pink**),
+or a custom hex. Colour-code by *function*, not prettiness: red for anything that
+goes to air, amber for production, green for private lines. An operator scanning
+a rack finds the red one without reading it.
+
+> **Known issue (RPC-250).** In the shipping build the talk pad does not render a
+> key's configured colour, and a key left with *no* colour set loses its talk
+> fill, glow and tally ring as well. Until that lands, treat colour as authored
+> intent rather than something you can rely on seeing, and don't use it as the
+> only way to distinguish a critical key — position and label carry the load.
+
+#### The rack preview
+
+Below the key table sits **Rack preview** — the profile as it will actually lay
+out, updating as you edit (*"Add a key to see the rack preview."* while empty).
+Use it. A key table sorted by slot number tells you nothing about whether the
+panel is *usable*; the preview shows the gaps, the crowding, and whether the
+channel someone reaches for in a hurry is where their thumb already is.
+
+#### Drafts, publishing and rollback
+
+Editing a profile produces a **Draft** until you **Publish** it: *"stations on
+this instance see the draft immediately, but the rest of the fleet only ever
+receives the last published version."* That asymmetry is the useful bit — you can
+try a layout on your own instance without pushing it to every site.
+
+**Publish** snapshots what is *saved*, not what is on screen: *"Save your changes
+below before publishing — Publish snapshots what's already saved, not what's
+still being edited here."* **Version history** lists every publish with who did
+it, and **Roll back** *"re-publishes it as a new version — nothing is deleted
+from the history."*
+
+#### Which panel a station actually renders
+
+Three things can decide it, in strict order:
+
+1. **The station's own assignment** — always wins, *even if it's broken*.
+2. **The site default panel** — *"The panel profile a station renders when it has
+   no explicit assignment of its own."*
+3. **Nothing** — no keys.
+
+The **Effective panel** preview on each station answers "what will this person
+actually see", resolved the same way logon resolves it, and labels which rule
+applied: **Station assignment**, **Site default**, or **None**. A station whose
+assigned profile has been deleted carries a **Missing** badge — *"This station's
+assigned panel profile no longer exists — it currently renders nothing. Reassign
+it or clear the assignment."* Note that a broken explicit assignment does **not**
+fall through to the site default; it renders nothing. That is what "even if it's
+broken" costs.
+
+The site default is **instance-local** — like the site alias, it is not part of
+the synced plan, and it can be set whether this instance is authority or
+subscriber.
+
+**Bulk assign panel** on the Stations tab handles fleets: tick stations, choose a
+profile, **Assign to selected**. **Clear assignment** *"removes the explicit
+assignment — the station then falls back to the site default, if one is set."*
+
+### Walking through a talk plan
+
+Building a plan in the order the tabs appear does not work — channels need
+stations, and profiles need both. Build it in dependency order.
+
+**1. Sketch it on paper first.** List the seats, then the conversations. For each
+conversation write down who may *talk* and who may *hear*; that pair of answers
+is what picks the channel kind.
+
+**2. Create the stations.** One per seat, named for the role. Leave **Assigned
+users** empty for now — it is open, which is fine on a plan nobody is using yet —
+and come back to it in step 6. Leave **Panel profile** as **None — no keys**;
+the profile doesn't exist yet.
+
+**3. Create the channels.** Now that stations exist you can populate **Talker
+stations**. Set **Listener open** deliberately on every Group channel. For each
+IFB, pick its **Program source** and decide whether the **Engine default** dim is
+enough.
+
+**4. Set homing.** Before anyone uses it, set **Homed on** for every channel, even
+in a single-instance install — the answer is **This instance** and writing it down
+now saves a debugging session when a second site appears. See
+[Homed on](#homed-on--where-the-audio-actually-mixes).
+
+**5. Build the profiles.** Start from the busiest seat, because it exposes the
+layout conventions the rest will inherit: which slot programme lives in, which
+colour means on-air. Watch the **Rack preview**. Then assign each profile on its
+station, or use **Bulk assign panel** where a profile is shared.
+
+For a crew who all need private lines to each other, skip the manual work and use
+the [Panel Builder](#panel-builder).
+
+**6. Grant access.** Now close the stations down: set **Assigned users** or
+**Assigned groups** on each. Prefer groups. Then check **Talk Access** per person
+to confirm each operator sees exactly the seats they should — it is much easier to
+read the wrong grant there than on the station list.
+
+**7. Check each station's Effective panel** and confirm no **Missing** badges.
+
+**8. Publish** every profile, if this instance is an authority for other sites.
+
+### Panel Builder
+
+Building a crew panel one key at a time is tedious and error-prone — an
+eight-person crew who all need private lines to each other is 56 keys across 8
+profiles, and each profile must omit exactly one person. **Talk Plan › Panel
+Builder** does it in one action:
+
+*"Build one shared panel for a group of people and assign it to all of them in
+one action — pick the members, and each gets a key to call every other member
+directly. Add ordinary channels too if the group also shares a party line or
+similar."*
+
+The trick it exploits is that **one profile renders differently for each
+viewer**. A profile carrying a person key to every member is handed to all of
+them; each member's own key is hidden on their own panel, because a private line
+to yourself is nonsense. One profile, N different-looking panels.
+
+- **Members** — *"Pick the stations that will share this panel. The order you
+  pick them in sets their key order below."* Order matters and it is the pick
+  order, not alphabetical; **Move up** / **Move down** adjust it.
+- **Shared channels (optional)** — *"Ordinary channel keys added after the person
+  keys — e.g. a party line the whole group already shares."*
+- **Preview as** — pick any member and see their view, *"That member's own key is
+  hidden, exactly as it would be on their real panel — a private line to yourself
+  doesn't render."*
+- **Build panel and assign to members** — creates the profile and assigns it to
+  every chosen station at once, reporting *"Created \"{profile}\" and assigned it
+  to {count} stations."*
+
+A member who isn't allowed on a chosen shared channel isn't blocked, just
+flagged: *"Some members aren't allowed on a chosen channel yet — the key will
+render but won't work until the station is granted the channel."* Fix it on the
+station's **Allowed channels**.
+
+![Panel Builder: pick the members, preview as any one of them, then build and assign in one action](img/29-panel-builder.png)
+
+### Wall panels
+
+A **wall panel** is an intercom that isn't a person: a tablet screwed to a wall
+in a scene dock, a green room, a foyer. Nobody signs in to it, and it stays live
+for months.
+
+**Talk Plan › Wall Panels** provisions them. *"Mint a device token bound to one
+station. A wall tablet opens the boot URL and is live — no login. The token and
+URL are shown once."*
+
+- Give it a **Name** (*"e.g. Foyer tablet"*), choose the station it is bound to,
+  and pick a policy: **Listen only** or **Push to talk**.
+- **Provision** mints the credential. *"Save these now — they are shown only
+  once."* — you get a **Token** and a **Boot URL**. Put the boot URL in the
+  tablet's kiosk browser and the panel comes up live.
+- The list shows each panel as **Active** or **Revoked**, with *"last seen {age}
+  ago"* or *"never used"*. **Revoke** kills a lost tablet instantly;
+  **Re-enable** restores it.
+
+![The Wall Panels tab: the provisioning form and the provisioned list](img/36-wall-panels.png)
+
+**Listen only** is the right default for anywhere the public can reach. A foyer
+tablet that can key the director's channel is a liability; one that shows the
+show relay is useful.
+
+The panel itself is deliberately spare: **Live** / **Connecting…** / **Offline**,
+each key showing **Talk** and **Listen** with **On air** and **Listening**
+states, and **Recorded** where the channel is being recorded. If the station is
+switched off it says so — *"This panel's station is disabled."*
+
+Wall panels are a separately licensed feature: *"Wall panels need the
+ExternalPanel licence feature."*
+
+Note the distinction from a **kiosk** panel (`/p/{slug}`), which is an ordinary
+monitoring panel shown read-only — see
+[Panels and kiosk displays](#panels-and-kiosk-displays). A wall panel is bound to
+a station and can carry live audio; a kiosk panel is not and cannot.
+
+### Plan Sync: authority and subscriber
+
+**Plan Sync**, on the Talk Plan page, is where an instance decides whether it
+owns its talk plan or follows somebody else's.
+
+- **Authority** — *"This instance owns the talk plan. Point it at another server
+  to instead follow that server's plan."*
+- **Subscriber of {peer}** — it pulls a read-only copy on the federation poll.
+  Every Talk Plan tab shows *"This talk plan is centrally managed by {authority}
+  — it's read-only here. Edit it from the authority instance instead."*
+
+**Becoming a subscriber is destructive and the UI treats it as such.**
+*"Switching to subscriber replaces every station, channel and panel profile here
+with that peer's plan on the next poll — nothing local is kept."* The
+confirmation counts what you are about to lose (*"{count} stations will be
+replaced"*, and the same for channels and profiles) and makes you type the
+authority's name. Going the other way is safe: *"Switching back to authority is
+not destructive — the plan currently applied here simply becomes yours to edit
+again."*
+
+The panel also reports sync health: **Last applied version**, **Last applied**,
+**Applies so far**, **Last sync error**.
+
+Two drift warnings are worth watching, because they are silent failures of intent
+rather than errors:
+
+- *"The authority assigned these usernames to stations, but no account with that
+  name exists on this instance yet — the station falls back to \"any
+  authenticated user\" until one is created."* A restriction that doesn't
+  resolve becomes **no restriction**.
+- The same for groups: the station *"falls back to its other assignments (or to
+  \"any authenticated user\" if it has none) until the group is created."*
+
+**Site identity** sits alongside: a **Site id** and an optional **Alias**
+(*"e.g. london"*) — *"An optional human name for this instance, so a channel can
+be homed on it by name instead of the raw id below. Identity, not plan — it can
+be set in either mode and an apply never touches it."* Aliases are lower-case
+letters, digits, `-` and `_`, and may not be `local` or `cloud`.
 
 ### The /talk client
 
 Signed-in users reach Remote Talk two ways. Inside the console, the **Talk**
 sidebar entry opens a page with a station picker, a logon bar and the same key
-grid described below, plus an **Open Talk client ↗** link. The dedicated
-**/talk** address is the same intercom with none of the console chrome around
-it — a full-screen page meant to be left open on its own monitor or a second
-device, rather than navigated to occasionally.
+grid, plus an **Open Talk client ↗** link. The dedicated **/talk** address is the
+same intercom with none of the console chrome — a full-screen page meant to be
+left open on its own monitor or a second device.
 
-<!-- TODO screenshot: 25-talk-client-picker.png — signed in at /talk before
-     joining: the station list (with each station's key count), the
-     microphone-permission explainer text, and the Join button -->
+![The /talk station picker before joining: production, per-station key counts and occupancy](img/38-talk-station-picker.png)
 
-Joining a station goes: sign in (the same login form the console uses) → pick
-a station (skipped automatically when only one is assigned) → **Join**, which
-triggers the browser's microphone permission prompt → the station's panel
-profile appears as a full-screen rack of keys. *"Joining will ask for
+#### Choosing a production, then a station
+
+Where an instance runs more than one show, the picker asks *"Choose your
+production"* first, then *"Choose your station"* within it — so an operator on
+one show never scrolls past every other show's seats. **Change** goes back.
+Stations belonging to no production appear under **Unassigned**, and once joined
+the header reads *"{production} — {station}"*.
+
+The station list shows each station's key count and its occupancy — **free**,
+*"held by you elsewhere"*, or *"in use by {name}"* — with *"{free} of {total}
+free"* in the header, and **Take over** where offered. If nothing is listed:
+*"No stations are assigned to your account yet — ask your administrator to assign
+one."*
+
+#### Joining
+
+**Join** triggers the browser's microphone prompt. *"Joining will ask for
 microphone access — that's needed so you can talk. You can still listen if you
-decline."* states this up front; declining still lets every listen key work,
-it just leaves every talk key inert, with *"Microphone access was denied — you
-can still listen, but talk keys won't work."* shown in the footer.
+decline."* Declining still lets every listen key work; it leaves talk keys inert,
+with *"Microphone access was denied — you can still listen, but talk keys won't
+work."* in the footer.
 
-<!-- TODO screenshot: 26-talk-client-rack.png — a joined station's rack, one
-     key latched open (MIC badge lit) and another showing tally from a
-     remote talker, plus the footer's connection dot and Leave button -->
+![A joined station's rack of keys](img/26-talk-client-rack.png)
 
-Each key is split into a talk half and a listen half. The **talk** half is
-pressure-sensitive to timing, not to a separate mode switch: hold it down and
-the mic opens for as long as you hold it; tap it quickly and it locks open
-until you tap it again (a key can be configured as always-momentary,
-always-latching, or this hold-vs-tap split). The **listen** half toggles that
-channel's subscription, and its small level control opens a popover with a
-gain slider and a **Mute**/**Unmute** toggle — muting a listen key is
-independent of whether you're talking on it. A footer strip shows the station
-name, the connection state, and a **MIC** badge whenever any key's mic is
-open; **Leave** logs off and returns to the station picker.
+#### Working the rack
+
+Each key is split into a **Talk** half and a **Listen** half.
+
+- The **talk** half honours the key's **Talk mode**: hold for momentary, tap to
+  latch, or both. A no-latch key says *"Momentary only — this key can't be
+  latched. Hold to talk."* A key on a channel the station may hear but not key
+  reads *"Listen-only key — you can hear this channel but not talk on it."*
+- The **listen** half toggles subscription. Its level control opens **Listen
+  level** with a gain slider in dB and **Mute**/**Unmute**. **Reset to default**
+  clears your personal value — *"Clear your saved level and go back to this key's
+  default ({value})"*.
+- **Tally** shows *"{count} talking"*.
+- A **Vol** control sets the **Master listen volume** across the whole rack.
+- Multi-page profiles get a page selector, **Page {n}**.
+- A recorded channel shows *"This channel is being recorded"*.
+
+**Your listen settings are remembered** per station and restored on your next
+logon — levels and mute state both. Personalisation is listen-only: it never
+changes your talk rights or the layout, which the admin owns.
+
+The footer carries the station name, the connection state (**Not logged on**,
+**Connecting…**, **Online**, **Reconnecting…**), a **MIC** badge whenever any
+key's mic is open, and **Leave**.
+
+#### Reply
+
+A **Reply** key dials back whoever last called this station, showing a
+**Recent** caller list — *"No recent callers"* until somebody does. Callers
+resolve to display names, falling back to *"Station {id}"* for one whose name
+isn't known locally (a caller at another federated instance, typically). It
+saves hunting for the right tile when a call comes in.
+
+#### Monitoring a source, and personal IFB
+
+A station can pull an ordinary Remote Play source into its own mix — **Monitor a
+source** — so an operator hears programme without a second player or a second
+set of headphones. Pick from *"Choose a source…"* and **Monitor**. There is a
+per-station cap: *"At the {max}-monitor limit for this station — stop one to add
+another."*
+
+Each monitor has its own **Duck** — a personal IFB, configured by the operator
+rather than by the plan. *"Personal-IFB duck: dips {db} dB while a talker is live
+on the armed channel(s)"*. In **Duck settings**:
+
+- **Duck while a talker is live**, with the dB amount, or **Mute while
+  interrupted** to cut it entirely.
+- **Counts as an interruption** — either **Any channel this station listens to**,
+  or **Only these channels**.
+
+That last choice is the useful one. An operator monitoring programme who ducks on
+*any* channel will have programme dipping all day on general crew chatter; ducking
+only on the director's channel dips it when it matters.
+
+This is distinct from an [**IFB** channel](#ifb-channels-programme-source-and-dim):
+an IFB channel is authored in the plan and ducks programme for *the talent*; a
+personal duck is the operator's own preference for their own ears.
 
 ### Panels and kiosk displays
 
-A **Talk** key can also be placed on an ordinary monitoring panel or room
-panel (an admin arranges this — the button-editing flow for talk keys is the
-same panel-configuration surface as a source pad; see [Monitoring
-panels](#5-monitoring-panels)), so an operator's regular panel can carry both
-source pads and intercom keys side by side. On a signed-in console session the
-key behaves exactly as it does at [/talk](#the-talk-client) — the panel and
-the /talk client share the same underlying connection, so a key pressed on
-one reads and controls the same channel as the other.
+A **Talk** key can also be placed on an ordinary monitoring panel or room panel,
+so an operator's regular panel carries both source pads and intercom keys side by
+side. On a signed-in console session the key behaves exactly as it does at
+[/talk](#the-talk-client) — the panel and the /talk client share the same
+underlying connection, so a key pressed on one controls the same channel as the
+other.
 
-<!-- TODO screenshot: 27-panel-talk-pad.png — a monitoring panel with a mix of
-     source pads and a lit talk key alongside them -->
+![The admin Talk view, logged on to a station](img/25-talk-view.png)
 
-**A talk key on a kiosk (`/p/{slug}`) panel is different.** The kiosk view is
-a shared wall display, not a signed-in operator's own intercom, so it has no
-station logon of its own to drive a live key. A talk pad there renders as a
-static, labelled key instead: the channel's live name (resolved from the
-network the same way a source pad's name is, so a renamed channel or a
-deleted one — shown as **missing** — still reads correctly) and a **TALK**
-badge, with a link that opens the full [Remote Talk client](#the-talk-client)
-in a new tab for whoever needs to actually key up. There is no lamp and no
-tally on a kiosk key today — see the callout below.
+**A talk key on a kiosk (`/p/{slug}`) panel is different.** The kiosk view is a
+shared wall display, not a signed-in operator's intercom, so it has no station
+logon to drive a live key. A talk pad there renders as a static labelled key: the
+channel's live name and a **TALK** badge, with a link that opens the full Remote
+Talk client in a new tab. There is no lamp and no tally on a kiosk key.
 
-<!-- TODO screenshot: 28-kiosk-talk-pad.png — the /p/{slug} kiosk view with a
-     static talk key (TALK badge, channel name, "sign in to talk" link) next
-     to an ordinary lit source pad -->
-
-> **Why a kiosk talk key can't show who's talking (yet).** Tally is pushed to
-> a station over its own authenticated connection — it isn't part of the
-> ordinary source inventory a kiosk session already has read access to, and a
-> kiosk session logs on to no station of its own. Reaching a channel's live
-> tally from a kiosk page would need either a new tally surface a plain
-> signed-in session can read, or a way for a kiosk to join a channel
-> listen-only without a full station logon — neither exists yet, so the
-> honest choice is a clearly-labelled static key rather than one that always
-> reads "nobody talking."
-
-### Station keys, Reply, and shared crew panels
-
-A panel key doesn't have to target a channel — it can target a **person**. Such
-a key (its tooltip reads *"Direct line to a person (station key)"*) opens a
-private line straight to another station without an admin ever drawing a P2P
-channel for the pair. The server materialises a hidden private line on demand
-when both ends are logged on and tears it down when they're not; it never shows
-up in the channel plan, and a third station never sees it — a station key is a
-private line that stays private by construction. The
-[architecture brief §06](remote-talk.html#c06) draws how one shared panel is
-rendered differently for each viewer.
-
-- **The Reply key.** A key labelled **Reply** dials back whoever last called
-  this station. It shows a **Recent** caller list — *"No recent callers"* until
-  someone does — resolving each caller to their display name (falling back to
-  *"Station {id}"* for a caller whose name isn't known, e.g. one at another
-  federated instance). It saves hunting for the right tile when a call comes in.
-- **Shared, self-excluding panels.** One profile can carry a station key to
-  every member of a group; each member's panel then shows a direct key to
-  everyone *except themselves* — their own key is simply hidden, because a
-  private line to yourself is nonsensical. An admin builds exactly this in one
-  action with the [Panel Builder](#panel-builder-and-bulk-assignment).
-- **Across sites.** When the two ends of a station-key line are logged on to
-  *different* federated instances, the private line still carries audio (with
-  mix-minus, and staying invisible to everyone else) for the common case where
-  the config authority hosts one end — see
-  [the fleet](#the-fleet-homing-the-dashboard-and-the-portal). The only piece
-  not yet crossing instances is the far-end *tally glow* on a cross-site pair;
-  the audio is unaffected.
-
-### Per-key appearance, saved levels, and paged racks
-
-Each key on a profile can be tuned by the admin, and each operator's own listen
-settings are remembered:
-
-- **Custom label** — any text (falling back to the channel or person's name
-  when blank), so a key can read **FLOOR** rather than the channel's full name.
-- **No-latch keys** — a key can be marked momentary-only for discipline-critical
-  channels; the client then shows *"Momentary only — this key can't be latched.
-  Hold to talk."* and a tap will never lock the mic open.
-- **Default listen level** — a key can start at a set level (or muted) on logon,
-  before any personal adjustment.
-- **Saved personal levels.** Your **Listen level** and mute/unmute per key are
-  remembered per station and restored when you log back on, instead of resetting
-  every time. **Reset to default** on a key's level popover clears your saved
-  value and returns it to the key's authored default — *"Clear your saved level
-  and go back to this key's default ({value})"*. Personalisation is listen-only:
-  it never changes your talk rights or the key layout, which the admin owns.
-- **Paged racks.** A profile with more keys than one rack shows can span several
-  **pages**; the client renders a page selector (*"Page {n}"*), and slot
-  numbering restarts on each page.
-
-### Admin: Talk Plan
-
-**Admin › Talk Plan** is where stations, channels and panel profiles are
-built, in three tabs.
-
-<!-- TODO screenshot: 29-talkplan-stations.png — the Stations tab: the table
-     (Name/Status/Assigned users/Allowed channels/Panel profile) and the New
-     station button -->
-
-**Stations** lists every station with its live **Status** (**Online** or
-**Talking** while logged on, blank otherwise), its assigned users and allowed
-channels, and its panel profile. The station editor sets **Name**, an
-**Enabled** toggle (*"Disabled stations refuse logon and aren't advertised as
-a source."*), **Assigned users** (*"Empty = any authenticated user may log
-on. Admins can always log on regardless of this list."*), **Allowed
-channels**, and a **Panel profile** (or **None — no keys**).
-
-**Channels** lists every channel's **Kind**, talker count, whether listening
-is open, where it's homed, its priority and any output bridge. The channel
-editor sets **Name** and **Kind** (**Party line** / **Group** / **P2P** /
-**IFB**); **Talker stations** (a **P2P** channel enforces *"A P2P channel
-needs EXACTLY two talker stations"*); **Listener open** (*"On = any station
-may listen. Off = only the listed talkers may listen."*); **Homed on** (this
-instance or the cloud instance, relevant only once more than one instance
-shares a plan — see [Multi-site](#multi-site-federation-and-shared-plans));
-and **Priority**, which decides which channel wins if several interrupt at
-once.
-
-<!-- TODO screenshot: 30-talkplan-channel-editor.png — an IFB channel's
-     editor: the Program source picker and the Custom dim level slider with
-     its "Engine default" state -->
-
-An **IFB** channel additionally takes a **Program source** — any ordinary
-discovered source, never another talk channel or station (*"a talk source
-can't be used as an IFB program source"*) — and a dim control: left off, the
-program ducks by the engine's built-in default while an interrupt talker is
-keyed up; switching on **Custom dim level** exposes a −60…0 dB slider,
-labelled *"How far the program is ducked while an interrupt talker is
-active."* Either way, the dim is not a standing attenuation — it engages only
-while somebody is actually talking on that IFB channel and lifts the instant
-they stop. Any channel — IFB or not — can also carry an **Output bridge**, an
-optional audio output its mix is additionally sent to, which is how a talk
-channel reaches a hardware panel or a studio's wall speakers rather than only
-browser sessions.
-
-**Profiles** are named sets of keys: each key picks a **Channel**, a **Slot**
-(the position in the rack), a **Talk mode** (**Momentary** / **Latching** /
-**Both**), whether it's listened to **by default** on logon, and a lamp
-**Colour** from the same six-swatch palette panels use. A live **Rack
-preview** below the key table shows the profile as it will actually lay out.
-
-If this instance's Talk Plan is subscribed to another instance's plan (see
-[Multi-site](#multi-site-federation-and-shared-plans)), every tab turns
-read-only with a banner: *"This talk plan is centrally managed by {authority}
-— it's read-only here. Edit it from the authority instance instead."*
-
-### Panel Builder and bulk assignment
-
-Building a shared crew panel one key at a time is tedious, so **Talk Plan ›
-Panel Builder** does it in one action: *"Build one shared panel for a group of
-people and assign it to all of them in one action — pick the members, and each
-gets a key to call every other member directly."* Pick the members (the order
-you pick sets their key order), optionally add ordinary **Shared channels** (a
-party line the whole group already has), name it, and **Preview as** any member
-to see their self-excluded view — *"That member's own key is hidden, exactly as
-it would be on their real panel."* **Build panel and assign to members** creates
-the profile and assigns it to every chosen station at once. A member not yet
-allowed on a chosen channel isn't blocked, just flagged: *"{member} isn't
-allowed on \"{channel}\""* — the key renders but won't work until you grant it.
-
-Two more assignment tools sit on the **Stations** tab for running a fleet of
-panels rather than editing one PUT at a time:
-
-- **Bulk assign panel** — select stations with the checkboxes, choose a profile,
-  and **Assign to selected** sets it on all of them; **Clear assignment** removes
-  the explicit assignment so the station falls back to the site default.
-- **Site default panel** — *"The panel profile a station renders when it has no
-  explicit assignment of its own."* Precedence is a station's own assignment
-  (even a broken one) first, then this site default, then nothing. It's
-  instance-local, like the site alias — not part of the synced plan. An
-  **Effective panel** preview on each station answers "what will this person
-  actually see", resolved the same way logon resolves it, and a **Missing** drift
-  badge flags a station whose assigned profile no longer exists.
-
-**Panel templates are versioned.** Editing a profile produces a **Draft** until
-you **Publish** it: *"stations on this instance see the draft immediately, but
-the rest of the fleet only ever receives the last published version."* **Version
-history** lists every publish, and **Roll back** re-publishes an earlier
-snapshot as a new version (nothing is deleted from the history). The
-[architecture brief §06](remote-talk.html#c06) covers the whole panel plane.
+If you want a wall display that *does* carry live audio and tally, provision a
+[wall panel](#wall-panels) instead — that is exactly the gap it fills.
 
 ### Recording a channel
 
 Any channel's mix can be recorded, at whichever instance **homes** it — so a
 cross-site channel is recorded exactly once, at home, not per site. Recording is
-its own licence feature (**Channel recording**), separate from Remote Talk: an
-instance can run intercom without it, and the **Recordings** page and recorder
-sit idle until it's licensed.
+its own licence feature (**Channel recording**), separate from Remote Talk.
 
 Set a channel's **Recording** mode in the channel editor — *"\"Off\" never
 records; \"Always\" records continuously; \"On-demand\" records only while an
 operator arms it from the channel list below (session state — not saved with the
 plan, and cleared on restart)."* An on-demand channel is started with **Arm** and
-stopped with **Disarm**; its badge flips from *"On-demand"* (disarmed) to a red
-**REC** when live.
+stopped with **Disarm**; its badge flips from *"On-demand"* to a red **REC**.
 
-- **Privacy is enforced, not optional.** A recorded channel raises a
-  *"This channel is being recorded"* indicator on every member's panel the moment
-  they log on. A **P2P** (private) line refuses recording altogether unless the
-  instance has explicitly enabled private-line recording *and* the mode is
-  **Always** — *"On-demand is never permitted for a private line."*
-- **Storage.** Segments are real Ogg/Opus files on local disk, rotated on a
-  timer and each carrying a JSON timeline sidecar of who spoke and when (the
-  **Timeline** view plays it back). If an S3 bucket is configured they're also
-  mirrored offsite — using the instance's own AWS role, so no keys are stored —
-  on a background queue that never blocks recording and never deletes the local
-  copy on a failure (upload failures are counted in Talk Status).
-- **Retention and legal hold.** A retention policy sweeps old *local* segments;
-  a recording on **legal hold** (**Place hold** / **Release hold**) is exempt and
-  refuses deletion until released. S3 expiry is a bucket lifecycle policy, not the
-  app's job.
+- **Privacy is enforced, not optional.** A recorded channel raises a *"This
+  channel is being recorded"* indicator on every member's panel the moment they
+  log on. A **P2P** line refuses recording unless the instance has explicitly
+  enabled private-line recording *and* the mode is **Always** — *"A private (P2P)
+  channel may only be recorded with \"Always\" — \"On-demand\" is never permitted
+  for a private line."*
+- **Storage.** Segments are Ogg/Opus files on local disk, rotated on a timer,
+  each with a JSON timeline sidecar of who spoke and when (the **Timeline** view
+  plays it back). A configured S3 bucket also receives them, using the instance's
+  own AWS role, on a queue that never blocks recording and never deletes the
+  local copy on failure.
+- **Retention and legal hold.** A retention policy sweeps old local segments; a
+  recording on **legal hold** (**Place hold** / **Release hold**) is exempt and
+  refuses deletion until released.
 
 The **Recordings** page filters by channel and date and offers **Play**,
-**Timeline**, legal-hold and delete; the recorder's own health (segments,
-faults, upload faults, armed channels) is a **Recorder** card on **Talk Status**.
-Full detail — the data path, the settings API, download tickets — is in the
+**Timeline**, legal-hold and delete; the recorder's health is a **Recorder** card
+on Talk Status. Full detail is in the
 [architecture brief §07](remote-talk.html#c07).
+
+![The Recordings page](img/30-recordings.png)
 
 ### Talk Status diagnostics
 
-**Admin › Talk Status** (also reachable from the **Talk status** link on the
-Talk page) is a live, read-only view of the mix engine and every logged-on
-station, refreshing once a second while the tab is visible.
+**Admin › Talk Status** (also reachable from the **Talk status** link on the Talk
+page) is a live, read-only view of the mix engine and every logged-on station,
+refreshing once a second while the tab is visible.
 
-<!-- TODO screenshot: 31-talk-status.png — the mixer health card, the buses
-     table, and one expanded session row showing its channel keys -->
+![Talk Status: the mixer card, the buses table and the crosspoint matrix](img/27-talk-status-matrix.png)
 
 The **Mixer** card is the engine's own health: **Running**/**Stopped**, tick
-count, **p50**/**p99** tick timing with a small sparkline, **Missed
-deadlines** (should stay at zero — a rising count means the mixer thread is
-falling behind), and **Crosspoint ops**. The **Encoders** figure is the
-mixer's own dedupe accounting made visible: *"{encoders} encoders for
-{members} members"*, broken down as *"{shared} shared + {personal}
-personal"* — everyone on a bus who ISN'T currently talking hears the
-identical mix, so they share one Opus encode between them; only active
-talkers get their own mix-minus encode. A ten-member party line with two
-people talking reads 3 encoders for 10 members (2 personal + 1 shared) —
-seeing personal ≈ members instead is a sign something is keeping almost
-everyone "talking" (a stuck key, most likely).
+count, **p50**/**p99** tick timing with a sparkline, **Missed deadlines** (should
+stay at zero — a rising count means the mixer thread is falling behind), and
+**Crosspoint ops**. The **Encoders** figure is the mixer's dedupe accounting made
+visible: *"{encoders} encoders for {members} members"*, broken down as
+*"{shared} shared + {personal} personal"*. Everyone on a bus who isn't talking
+hears the identical mix and shares one Opus encode; only active talkers get their
+own mix-minus encode. A ten-member party line with two talkers reads 3 encoders
+for 10 members — seeing personal ≈ members instead means something is keeping
+almost everyone "talking", most likely a stuck key.
 
-The **Buses** table lists every configured bus with its **Kind** chip
-(**Party line**/**Group**/**P2P**/**IFB**), live **Talkers**/**Listeners**
-counts, and any **Bridged output** — a dim row means the bus is currently
-inactive (nobody on it).
+The **Buses** table lists every bus with its **Kind** chip, live
+**Talkers**/**Listeners** counts and any **Bridged output**; a dim row means
+nobody is on it.
 
-The **Sessions** table is one row per logged-on station: **User**,
-**Connected** (age), **Signaling** state, **ICE** state, the selected
-**Candidate pair**, **Packets** (↑up/↓down counts plus a live rate), an
-**Uplink** level meter, and whether the session is **Licensed**. Reading the
-connectivity columns: **Signaling** just tracks the WebSocket
-(Connecting/Connected/Closed); **ICE** is the WebRTC connectivity check
-itself — green means it settled on a working path, amber means it's still
-negotiating (new/gathering/checking), red means it failed or disconnected.
-The **Candidate pair** names which kind of path that settled on: **host**
-(green) is a direct LAN path — the common case on-prem; **srflx** (blue) went
-through STUN to cross a NAT; **relay** (amber) went through a TURN relay,
-which this build doesn't configure by default, so seeing one at all is worth
-investigating. *"no pair yet"* just means ICE hasn't settled yet. Expanding a
-session's row (▶) shows its channel keys — **Talk**/**Listen** dots and each
-key's **Gain** — useful for confirming a station's own state without asking
-the operator.
+The **Sessions** table is one row per logged-on station: **User**, **Connected**
+age, **Signaling** state, **ICE** state, the selected **Candidate pair**,
+**Packets**, an **Uplink** meter and whether the session is **Licensed**.
+Reading the connectivity columns: **Signaling** tracks the WebSocket only; **ICE**
+is the WebRTC connectivity check — green settled, amber still negotiating, red
+failed. The **Candidate pair** names the path: **host** (green) is a direct LAN
+path, the common case on-prem; **srflx** (blue) crossed a NAT via STUN;
+**relay** (amber) went through a TURN relay, which this build doesn't configure
+by default, so seeing one is worth investigating. Expanding a row (▶) shows that
+station's keys with **Talk**/**Listen** dots and each key's **Gain** — useful for
+confirming an operator's state without asking them.
 
-An **Inputs** section (collapsed by default — **Show inputs**) lists the
-mixer's raw per-station and per-program input queues: **Active**, **Queued**
-samples, **Dropped** and **Starved ticks** — a station whose **Starved
-ticks** keeps climbing is under-running its jitter buffer, the same
-diagnostic language the AES67 output pages use.
+An **Inputs** section (**Show inputs**) lists raw per-station and per-program
+queues: **Active**, **Queued**, **Dropped** and **Starved ticks**. Climbing
+**Starved ticks** means a station is under-running its jitter buffer.
 
-### Multi-site: federation and shared plans
-
-Two or more RemotePlay instances — typically an on-prem server and a cloud
-instance — can share Remote Talk across a federation link (see
-**Federation**, not yet documented in full in this revision). Two things ride
-on top of that link once both sides are licensed for **Federation** and
-**Remote Talk**:
-
-- **A shared channel plan.** One instance is the plan's **authority** —
-  admins edit stations, channels and profiles there — and any number of
-  peers can be a **subscriber**, pulling a read-only copy of that plan on the
-  same interval federation already polls on. Switching an instance to
-  subscriber mode is a **replace, not a merge**: everything local is
-  overwritten with the authority's plan, which is why the Talk Plan tabs go
-  read-only under a subscriber (see [Admin: Talk Plan](#admin-talk-plan)
-  above). Choosing this mode is a REST call today (`PUT /api/talk/config`) —
-  there is no console page for it yet in this revision.
-- **Remote tally.** A station logged on at one instance shows up as talking
-  on a shared channel at the other, the same lamp/tally behaviour as a local
-  talker. The one thing to know operationally: what travels between
-  instances is "this station has a key open somewhere," not which channel —
-  so a remote talker tallies on *every* shared channel they're allowed to
-  use, not just the one they're actually on. If that's ever ambiguous, the
-  channel plan itself (shared identically on both sides) is the source of
-  truth for which channels a given remote station could be on. (More recent
-  builds narrow this to the *specific* channels a remote desk is keyed on, so a
-  private line no longer lights every channel it merely offers — see the
-  [architecture brief §08](remote-talk.html#c08).)
-
-### The fleet: homing, the dashboard, and the portal
+### The fleet: instances, homing and the portal
 
 Beyond a single authority-and-subscriber pair, Remote Talk runs as a **fleet** —
-several instances, one shared plan, audio homed where its people are. Three
-pieces make that manageable; each is drawn out with schematics in the
+several instances, one shared plan, audio homed where its people are. Each piece
+is drawn out with schematics in the
 [architecture brief §08](remote-talk.html#c08).
 
-- **Homing decides where audio mixes, and it's per channel.** A channel's
-  **Homed on** setting picks the instance whose matrix mixes it: *This instance*,
-  *Cloud* (whoever advertises it as theirs — the older relative spelling), or a
-  specific named **Site**. The point is latency and cost: home a London crew's
-  own party line **on London** and two London desks mix locally with no
-  inter-site hop; home a fleet-wide all-call on the cloud and every site
-  exchanges just **one** audio leg with it, whatever its headcount. The site a
-  channel names must be a reachable federation peer of every instance carrying
-  its members — a spoke can't reach another spoke unless they directly peer.
-- **The Fleet dashboard** (**Fleet** in the sidebar) is a hub-side view of every
-  federated instance built on the existing federation link — no extra service.
-  Per instance it shows **Sessions**, **Active channels**, **Legs**, whether the
-  **Mixer** is running, its config mode and licence, marking a missed peer
-  **Stale** or **Unreachable** while keeping its last-known identity. It also
-  draws the **Inter-site legs** between instances and a summary **crosspoint
-  matrix** — with an honest note that each instance reports only its *own* total
-  leg count, so for who's-talking-to-whom detail you open that instance's own
-  Talk Status. An admin can also *drive* a member from the hub (view its config,
-  set its config mode or site alias) — but only over the federation link, only
-  scoped and audited, and only if that member has opted in with **Allow this
-  instance to be managed** (off by default).
-- **The portal is the fleet's single front door.** A station lives on one
-  instance, so with several instances an operator needs routing. The **portal**
-  (a *"Session broker"*) is one URL: sign in once, and it allocates an instance
-  by policy and redirects you — *"Routing you to {instance} — {reason}."* The
-  rules run in strict order: if your station is already live somewhere it sends
-  you *there* (*"your station is already active there"*, which also stops the
-  same station being live twice); then a one-instance fleet lands on the hub;
-  then it prefers the instance that **hosts your channels** (fewer legs); then
-  the **least-busy** instance below a session ceiling; then, if all are full, the
-  hub. Under shared single-sign-on (Cognito) the redirect is silent — the target
-  instance already trusts your session — and mobile clients use a one-time,
-  60-second logon ticket instead. Identity itself (provisioning, group sync,
-  disabling an account across the fleet) is centrally managed; disabling a user
-  *"immediately ends any of their live Talk sessions and blocks sign-in until
-  re-enabled."*
+#### The Fleet dashboard
+
+**Fleet** in the sidebar is a hub-side view of every federated instance, built on
+the existing federation link — no extra service.
+
+Per instance it shows **Sessions**, **Active channels**, **Legs**, whether the
+**Mixer** is **running** or **stopped**, its config mode (**Authority** /
+**Subscriber**) and licence state, plus its **Site** alias and **Version**. The
+instance you are on is marked **This instance**. A peer that has missed its poll
+is marked **Stale** or **Unreachable** with *"last seen {ago} ago"*, keeping its
+last-known identity rather than vanishing.
+
+Two honest caveats are printed on the page itself, and both matter when you are
+reading it under pressure:
+
+- **Inter-site legs** — *"Each instance reports only its OWN total leg count —
+  the endpoint doesn't say which peer a leg connects to, so the diagram below
+  shows known federation membership only; the number beside each instance is
+  that instance's own reported total, not a confirmed count of legs to this hub
+  specifically."*
+- **Fleet crosspoint matrix (summary)** — *"Aggregate per instance — this
+  endpoint has no per-station or per-channel detail across the fleet. For the
+  detailed crosspoint matrix (who's talking to whom on a channel), open that
+  instance's own Admin › Talk Status page."*
+
+> **If you see a banner reading *"Demo data — the fleet status backend isn't
+> wired yet…"*, the numbers on screen are simulated in your browser tab and are
+> not your fleet.** The page falls back to a self-evolving mock when
+> `GET /api/fleet/status` returns 404. Do not diagnose a live incident from a
+> mocked dashboard.
+
+![The Fleet dashboard: per-instance sessions, active channels, legs and mixer state](img/31-fleet-dashboard.png)
+
+#### Driving another instance from the hub
+
+An admin can also *drive* a member from the hub — **Manage** opens its Talk
+config, health and a recent audit slice, and can set its config mode or site
+alias. Three constraints keep this safe:
+
+- It only works over the federation link, scoped and audited on both ends.
+- The target must have opted in: **Allow this instance to be managed**, *"Off by
+  default — nothing changes until you opt in, and you can opt out again at any
+  time."* Otherwise the hub shows *"Management not enabled on that instance"*.
+- Switching a member to subscriber from the hub carries the same destructive
+  confirmation as doing it locally: *"On its next poll, every station, channel
+  and panel profile there will be REPLACED by {authority}'s plan — nothing local
+  is merged or kept."*
+
+#### The portal
+
+A station lives on one instance, so with several instances an operator needs
+routing. The **portal** (a *"Session broker"*) is one URL: sign in once and it
+allocates an instance by policy and redirects — *"Routing you to {instance} —
+{reason}."* The rules run in strict order:
+
+1. If your station is already live somewhere, it sends you **there** (*"your
+   station is already active there"*) — which also stops the same station being
+   live twice.
+2. A one-instance fleet lands on the hub.
+3. Otherwise it prefers the instance that **hosts your channels** — fewer legs.
+4. Then the **least-busy** instance below a session ceiling.
+5. If all are full, the hub.
+
+Under shared single sign-on the redirect is silent; mobile clients use a
+one-time, 60-second logon ticket. Identity is centrally managed, and disabling a
+user *"immediately ends any of their live Talk sessions and blocks sign-in until
+re-enabled."*
 
 ### Licensing
 
-See [§8 Licence](#8-licence) for the general licence page — **Remote Talk**
-is one of its gated features, and unlike the others it degrades to a timed
-audio preview rather than disabling its pages outright. One inconsistency
-worth knowing about until it's tidied up: the **Talk Plan** admin pages don't
-yet show the same "requires a licence" banner Federation and device
-management show when unlicensed — an unlicensed admin can still open the
-editors and appear to save changes, and the server rejects the write the same
-way it rejects any other unlicensed Talk Plan call. Treat a Talk Plan save
-that silently fails on an unlicensed instance as this, not a bug in what you
+See [§8 Licence](#8-licence) for the general licence page. **Remote Talk** is one
+of its gated features, and unlike the others it degrades to a timed audio preview
+rather than disabling its pages outright — an unlicensed session gets a few
+seconds and then closes with *"Remote Talk preview ended — a licence is required
+to continue."*
+
+Related features are licensed separately: **Channel recording** for the recorder,
+**ExternalPanel** for wall panels, and **Federation** for shared plans and the
+fleet.
+
+One inconsistency worth knowing until it is tidied up: the **Talk Plan** admin
+pages don't show the same "requires a licence" banner Federation and device
+management show when unlicensed. An unlicensed admin can open the editors and
+appear to save, and the server rejects the write. Treat a Talk Plan save that
+silently fails on an unlicensed instance as this, not as a mistake in what you
 typed.
+
+### Known issues in this build
+
+Open defects an operator can hit. Each is tracked; none is a mistake in your
+configuration.
+
+| Area | Behaviour | Ticket |
+|---|---|---|
+| **Key colour** | The talk pad doesn't show a key's configured colour, and an unset colour kills its talk fill, glow and tally ring. | RPC-250 |
+| **Station access** | A restricted station becomes **open to anyone** when its assigned usernames don't resolve to local accounts — the fallback is "any authenticated user". Most likely on a subscriber whose authority named accounts that don't exist locally. Check Plan Sync's unresolved-assignment warnings after every plan change. | RPC-240 |
+| **Cross-instance tally** | Tally between instances is **polled**, so an ordinary push-to-talk press does not light the far end in real time. A private line across sites carries audio correctly; only the far-end glow lags. | RPC-243, with RPC-244/245/246 in flight |
+| **Wall panel PTT** | A push-to-talk device token can latch by simply never sending key-off — a **Push to talk** wall panel is not a hard guarantee against an open mic. Prefer **Listen only** anywhere unattended. | RPC-229 |
+| **Inter-site media** | The audio leg between instances is cleartext RTP. Treat the inter-site path as trusted network, or tunnel it. | RPC-222 |
+| **IFB dim** | Dim is currently per-channel, not dim-follows-key or per-member. | RPC-202 |
 
 ### Troubleshooting
 
 | Symptom | Likely cause | What to check |
 |---|---|---|
-| Talk key never opens; mic never seems to arm | The browser refused microphone access, or the page isn't a secure context | `getUserMedia` needs HTTPS (or `localhost`) — a plain `http://` console reachable only on the LAN won't even prompt. Check the browser's address-bar mic/permission icon for this site; the client shows *"Microphone access was denied — you can still listen, but talk keys won't work."* if it was refused outright. |
-| Station shows **Connecting…**/**Reconnecting…** indefinitely | A stalled WebSocket or ICE negotiation that never settles | Do a hard refresh rather than re-pressing **Join** — the client backs off and retries up to 5 times before giving up with *"Connection lost after {count} attempts."*, and a fresh page load restarts the whole connection cleanly instead of retrying a wedged one. |
-| No audio from a channel you're listening to | The channel has no active talker, the listen key is muted, or the session/mixer itself isn't healthy | Confirm the key's listen half is lit and not muted, then check **Talk Status**: the session's **Uplink** meter and the channel's row under **Buses** (Talkers/Listeners) show whether there's actually anyone to hear. |
-| A kiosk talk key never lights up | Expected — kiosk keys are static today, see [Panels and kiosk displays](#panels-and-kiosk-displays) | Sign in at [/talk](#the-talk-client) (or use a panel from a signed-in console session) to get a live, tallying key. |
-| Talk cuts out after a few seconds every time | The instance isn't licensed for Remote Talk | Check **Settings › Licence** for the **Remote Talk** feature — unlicensed sessions get a 5-second preview, then close with *"Remote Talk preview ended — a licence is required to continue."* (see [Licensing](#licensing) above). |
+| Talk key never opens; mic never arms | The browser refused microphone access, or the page isn't a secure context | `getUserMedia` needs HTTPS (or `localhost`) — a plain `http://` console on the LAN won't even prompt. Check the address-bar permission icon; the client shows *"Microphone access was denied…"* if it was refused. |
+| Station shows **Connecting…**/**Reconnecting…** indefinitely | A stalled WebSocket or ICE negotiation | Hard-refresh rather than re-pressing **Join** — the client retries up to 5 times before *"Connection lost after {count} attempts."*, and a fresh load restarts cleanly instead of retrying a wedged connection. |
+| *"That station is already logged on elsewhere."* | The seat is live in another browser | Expected — one seat, one place. Use **Take over** in the picker if it is offered, or find the other session. |
+| A key renders but never works | The station isn't allowed on that channel | The key lives on the profile; the right lives on the station. Check **Allowed channels** on that station. |
+| Everyone can log on to a station you meant to restrict | **Assigned users** is empty, which means open | Empty is open, not closed. Add users or groups; the editor states the resulting posture back to you. |
+| A station renders no keys at all | Its assigned profile was deleted | Look for the **Missing** badge. A broken explicit assignment does *not* fall through to the site default. |
+| Restriction vanished after a plan sync | The authority named a user or group that doesn't exist here | The station falls back to "any authenticated user". Create the account or group locally, or check the unresolved-assignment warnings on Plan Sync. |
+| A local conversation sounds laggy | The channel is homed at another site | Check **Homed on** — see [Homed on](#homed-on--where-the-audio-actually-mixes). |
+| No audio from a channel you're listening to | No active talker, the key is muted, or the session isn't healthy | Confirm the listen half is lit and unmuted, then check **Talk Status**: the **Uplink** meter and the channel's **Buses** row show whether there is anyone to hear. |
+| A kiosk talk key never lights up | Expected — kiosk keys are static | Use a [wall panel](#wall-panels) for a live wall display, or sign in at [/talk](#the-talk-client). |
+| Talk cuts out after a few seconds | The instance isn't licensed for Remote Talk | **Settings › Licence** — see [Licensing](#licensing). |
+| Fleet numbers look wrong | The dashboard may be showing mock data | Look for the *"Demo data…"* banner. |
+
+---
+
+## 10. Example configurations
+
+Four worked plans. They are illustrative shapes, not products — the point is the
+*reasoning*: which kind, who talks, who hears, and where it homes.
+
+### Sports broadcast — a single OB truck
+
+One venue, one truck, everybody within a hundred metres. The whole plan homes
+**on this instance**; nothing should leave the compound.
+
+| Channel | Kind | Talkers | Listen | Why |
+|---|---|---|---|---|
+| **PRODUCTION** | Party line | Director, PA, Vision, Replay, Graphics | Open | The main conversation. Everyone speaks. |
+| **CAMERAS** | Group | Director, Vision | Open | Camera ops hear instruction and don't clutter it. Keeping cameras off the talk side is the entire point. |
+| **TALENT IFB** | IFB | Director, Producer | — | Programme to the commentators, ducked when the director speaks. **Priority** above the producer's. |
+| **RF/ENG** | Party line | RF tech, roving ops | Open | Off the main line so a radio problem doesn't block the director. |
+
+Stations: **Director**, **PA**, **Vision**, **Replay**, **Graphics**, **Cameras
+1–6**, **Commentary 1–2**, **RF**.
+
+Panels: one profile per role family. The director's has PRODUCTION latching in
+slot 0, CAMERAS **Momentary** with **No latch** (a stuck key here goes to a
+camera op mid-shot), TALENT IFB momentary in red, and person keys to PA, Vision
+and Replay. Camera ops get a small profile — CAMERAS listen-only, a person key to
+Vision — and one profile serves all six seats.
+
+Use the **Panel Builder** for the truck core (Director, PA, Vision, Replay,
+Graphics) with **PRODUCTION** as a shared channel: five members, one action, each
+gets four person keys plus the party line.
+
+### Ballet — a lyric theatre
+
+The distinguishing feature is that most of the crew must not *hear* chatter
+during a performance; they take cues. Discipline over convenience.
+
+| Channel | Kind | Talkers | Listen | Why |
+|---|---|---|---|---|
+| **DSM CALLS** | Group | DSM only | Open | The show is called on this and nothing else is allowed on it. |
+| **STAGE** | Party line | Stage crew, ASMs | Open | Working conversation between scene changes. |
+| **FLYS** | Party line | Flys, DSM | Open | Small, safety-critical, kept separate. |
+| **LX/SOUND** | Party line | LX, Sound, DSM | Open | Departmental. |
+| **CONDUCTOR IFB** | IFB | DSM | — | Pit relay, ducked for a call. |
+
+Every key on **DSM CALLS** is **Momentary** with **No latch**, on every profile,
+without exception. Set **Listen by default** on DSM CALLS for all crew — a
+missed cue because somebody hadn't opened their listen key is not an acceptable
+failure mode. Colour it red everywhere and put it in slot 0 on every profile, so
+it is the same key in the same place whoever you are.
+
+Give **FLYS** its own channel rather than folding it into STAGE. Under a flying
+piece the conversation must not compete with a scene change.
+
+### Olympics — multi-venue, one broadcast centre
+
+Here homing stops being an academic setting. Say three venues (Aquatics, Athletics,
+Arena) plus an IBC, each a Remote Play instance, federated, plan authority at the
+IBC with each venue a **subscriber**.
+
+| Channel | Kind | Homed on | Why |
+|---|---|---|---|
+| **AQUATICS PROD** | Party line | **Site: aquatics** | Twenty people at one venue. Homed locally, none of it crosses the WAN. |
+| **ATHLETICS PROD** | Party line | **Site: athletics** | Same. |
+| **ARENA PROD** | Party line | **Site: arena** | Same. |
+| **IBC COORD** | Party line | **Cloud** (the IBC) | Genuinely cross-venue. Each venue exchanges one leg with the IBC regardless of headcount. |
+| **ALL CALL** | Group | **Cloud** | Emergency/announcement. Talkers restricted to IBC duty managers, **Listener open**. |
+
+Get this wrong — home **AQUATICS PROD** on the cloud — and every word between two
+people standing next to each other at the pool makes a round trip to the IBC and
+back. That is the single highest-value decision in a multi-venue plan.
+
+Operational notes:
+
+- Set a **Site alias** on each instance (`aquatics`, `athletics`, `arena`) before
+  building channels, so homing can name them.
+- Operators reach the fleet through the **portal**, not a venue URL — it routes
+  them to the instance hosting their channels, and back to the right one if their
+  station is already live.
+- Watch for the plan-sync unresolved-assignment warnings: if a venue hasn't got a
+  user account the IBC named, that station silently becomes open to everyone at
+  that venue.
+- Use **Groups** for access, not individual users. Rosters change daily; per-venue
+  groups mean access follows the group.
+
+### A parade — a moving route
+
+Route-shaped rather than venue-shaped: positions along a few miles, a start, a
+finish, a review stand, and connectivity that varies from good to appalling.
+
+| Channel | Kind | Homed on | Why |
+|---|---|---|---|
+| **ROUTE COORD** | Party line | **Cloud** | Members are geographically spread with no natural centre. Cloud is the only fair home. |
+| **REVIEW STAND** | Party line | **Site: stand** | A dense cluster of people in one place — home it with them. |
+| **TALENT IFB** | IFB | **Cloud** | Presenters, ducked for the director. |
+| **SAFETY** | Group | **Cloud** | Talkers restricted to safety leads, **Listener open** to everyone. High **Priority**. |
+
+The things this shape specifically needs:
+
+- **Wall panels** at fixed points — start marshalling, the stand, the dispersal
+  area. Provision them **Listen only** where the public can reach them, **Push to
+  talk** only where a marshal is stationed.
+- **SAFETY** on **Momentary** with **No latch** on every profile, high
+  **Priority** so it takes the ear over production chatter, red, slot 0.
+- Expect reconnects. Positions on poor connectivity will drop and come back; the
+  client retries and personal listen levels are restored on rejoin, so an
+  operator who reconnects does not have to rebuild their mix.
+- Keep **ROUTE COORD** membership small and push the detail down into
+  position-local channels. A party line with sixty people on it is not a channel,
+  it is a crowd.
 
 ---
 
@@ -1120,7 +1688,7 @@ not yet documented here. They are the subject of the next revisions:
   RemotePlay servers and from legacy RemotePlay installations. (Remote Talk's
   own use of the federation link — shared plans, homing, the Fleet dashboard and
   the portal — is covered in §9
-  [The fleet](#the-fleet-homing-the-dashboard-and-the-portal) and, in depth, in
+  [The fleet](#the-fleet-instances-homing-and-the-portal) and, in depth, in
   [remote-talk.html](remote-talk.html).)
 - **Summary** and **Users** — the admin overview and account management.
 - **Panel control** — issuing `pt_` panel tokens for external controllers.
@@ -1131,10 +1699,12 @@ so in the UI; there is nothing to document yet.
 
 ---
 
-*Generated against main @ `c50db91`, RPC-1…RPC-199 (the Remote Talk epic
-RPC-126, through cross-instance station-key pairs). The Remote Talk chapter is
+*Generated against main @ `f0587ab`, RPC-1…RPC-250 (the Remote Talk epic RPC-126
+through the production-first station picker, RPC-249). The Remote Talk chapter is
 the operator-and-admin walkthrough; the full engineering reference is
-[remote-talk.html](remote-talk.html) in this folder. Screenshots captured with
-`build/manual-screenshots.mjs` against a live instance fed by
-`RemotePlayCore.LivewireSim` and `RemotePlayCore.Aes67Sim`; see
+[remote-talk.html](remote-talk.html) in this folder. Console screenshots captured
+with `build/manual-screenshots.mjs` against a local instance fed by
+`RemotePlayCore.LivewireSim` and `RemotePlayCore.Aes67Sim`; the Remote Talk
+screenshots (25–38) with `build/manual-screenshots-talk.mjs` against the live
+`a.remote.talk` fleet, which carries a seeded plan and needs no simulators. See
 [manual-maintenance.md](../manual-maintenance.md).*
